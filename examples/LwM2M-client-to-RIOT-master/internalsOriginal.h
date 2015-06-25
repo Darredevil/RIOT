@@ -60,8 +60,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-//#include "er-coap-13/er-coap-13.h"
-#include "er-coap-13.h"
+#include "er-coap-13/er-coap-13.h"
 
 #ifdef WITH_LOGS
 #define LOG(...) fprintf(stderr, __VA_ARGS__)

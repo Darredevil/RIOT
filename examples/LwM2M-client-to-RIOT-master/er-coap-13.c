@@ -382,9 +382,9 @@ coap_get_variable(const uint8_t *buffer, size_t length, const char *name, const 
 
 /*-----------------------------------------------------------------------------------*/
 uint16_t
-coap_get_mid()
+coap_get_mid(void)
 {
-  return ++current_mid;
+  return ++current_mid; 
 }
 /*-----------------------------------------------------------------------------------*/
 /*- MEASSAGE PROCESSING -------------------------------------------------------------*/

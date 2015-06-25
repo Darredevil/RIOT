@@ -1,22 +1,19 @@
 # name of your application
-APPLICATION = lwm2m-server
+APPLICATION = RIOTwakaama
 
 # If no BOARD is found in the environment, use this default:
 BOARD ?= native
+#PORT=/dev/ttyUSB0
 
 # This has to be the absolute path to the RIOT base directory:
 RIOTBASE ?= $(CURDIR)/../..
-
-USEMODULE += wakaama
-INCLUDES += -I$(RIOTBASE)/sys/wakaama
 
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the
 # development process:
 CFLAGS += -DDEVELHELP
-CFLAGS += -DLWM2M_SERVER_MODE -DWITH_LOGS -DLWM2M_LITTLE_ENDIAN
 
 # Change this to 0 show compiler invocation lines by default:
-QUIET ?= 1
+QUIET ?= 0
 
 include $(RIOTBASE)/Makefile.include
