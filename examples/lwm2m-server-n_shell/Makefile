@@ -8,6 +8,10 @@ BOARD ?= native
 RIOTBASE ?= $(CURDIR)/../..
 
 USEMODULE += wakaama
+USEMODULE += uart0
+USEMODULE += shell
+USEMODULE += shell_commands
+USEMODULE += ps
 INCLUDES += -I$(RIOTBASE)/sys/wakaama
 
 # Comment this out to disable code in RIOT that does safety checking

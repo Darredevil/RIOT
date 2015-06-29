@@ -78,6 +78,28 @@
 #include "board_uart0.h"
 #include "posix_io.h"
 
+#include "thread.h"
+#include "msg.h"
+#include "kernel.h"
+#include "net/ng_pktdump.h"
+#include "net/ng_netbase.h"
+#include "net/ng_ipv6/addr.h"
+#include "net/ng_ipv6/hdr.h"
+#include "net/ng_sixlowpan.h"
+#include "net/ng_udp.h"
+#include "od.h"
+
+/**
+ * @brief   PID of the pktdump thread
+ */
+static kernel_pid_t _pid = KERNEL_PID_UNDEF;
+
+/**
+ * @brief   Stack for the pktdump thread
+ */
+static char _stack[NG_PKTDUMP_STACKSIZE];
+
+
 /*
  * ensure sync with: er_coap_13.h COAP_MAX_PACKET_SIZE!
  * or internals.h LWM2M_MAX_PACKET_SIZE!
@@ -600,6 +622,7 @@ static void prv_quit(void)
     g_quit = 1;
     lwm2m_close(lwm2mH);
     connection_free(connList);
+    exit(1);
 }
 
 void handle_sigint(int signum)
@@ -670,52 +693,184 @@ int lwm2m_cmd(int argc, char **argv)
 /* -------------------------------------------------- */
 
 /* ----------------- my constants ------------------- */
-static const shell_command_t shell_commands[] = {
-    { "lwm2m", "use lwm2m magic commands", lwm2m_cmd },
-    { NULL, NULL, NULL }
-};
+// static const shell_command_t shell_commands[] = {
+//     { "lwm2m", "use lwm2m magic commands", lwm2m_cmd },
+//     { NULL, NULL, NULL }
+// };
 static const shell_command_t commands[] =
-    {
-            {"init", "Initialize the protocol.", prv_init}
-            {"list", "List registered clients.", prv_output_clients},
-            {"read", "Read from a client.\n\n Long description:\n read CLIENT# URI\r\n"
-                                            "   CLIENT#: client number as returned by command 'list'\r\n"
-                                            "   URI: uri to read such as /3, /3//2, /3/0/2, /1024/11, /1024//1\r\n"
-                                            "Result will be displayed asynchronously.", prv_read_client},
-            {"write", "Write to a client.\n\n Long description:\n write CLIENT# URI DATA\r\n"
-                                            "   CLIENT#: client number as returned by command 'list'\r\n"
-                                            "   URI: uri to write to such as /3, /3//2, /3/0/2, /1024/11, /1024//1\r\n"
-                                            "   DATA: data to write\r\n"
-                                            "Result will be displayed asynchronously.", prv_write_client},
-            {"exec", "Execute a client resource.\n\n Long description:\n exec CLIENT# URI\r\n"
-                                            "   CLIENT#: client number as returned by command 'list'\r\n"
-                                            "   URI: uri of the resource to execute such as /3/0/2\r\n"
-                                            "Result will be displayed asynchronously.", prv_exec_client},
-            {"del", "Delete a client Object instance.\n\n Long description:\n del CLIENT# URI\r\n"
-                                            "   CLIENT#: client number as returned by command 'list'\r\n"
-                                            "   URI: uri of the instance to delete such as /1024/11\r\n"
-                                            "Result will be displayed asynchronously.", prv_delete_client},
-            {"create", "create an Object instance.\n\n Long description:\n create CLIENT# URI DATA\r\n"
-                                            "   CLIENT#: client number as returned by command 'list'\r\n"
-                                            "   URI: uri to which create the Object Instance such as /1024, /1024/45 \r\n"
-                                            "   DATA: data to initialize the new Object Instance (0-255 for object 1024) \r\n"
-                                            "Result will be displayed asynchronously.", prv_create_client},
-            {"observe", "Observe from a client.\n\n Long description:\n observe CLIENT# URI\r\n"
-                                            "   CLIENT#: client number as returned by command 'list'\r\n"
-                                            "   URI: uri to observe such as /3, /3/0/2, /1024/11\r\n"
-                                            "Result will be displayed asynchronously.", prv_observe_client},
-            {"cancel", "Cancel an observe.\n\n Long description:\n cancel CLIENT# URI\r\n"
-                                            "   CLIENT#: client number as returned by command 'list'\r\n"
-                                            "   URI: uri on which to cancel an observe such as /3, /3/0/2, /1024/11\r\n"
-                                            "Result will be displayed asynchronously.", prv_cancel_client},
+{
+        {"init", "Initialize the protocol.", prv_init},
+        {"list", "List registered clients.", prv_output_clients},
+        {"read", "Read from a client.\n\n Long description:\n read CLIENT# URI\r\n"
+                                        "   CLIENT#: client number as returned by command 'list'\r\n"
+                                        "   URI: uri to read such as /3, /3//2, /3/0/2, /1024/11, /1024//1\r\n"
+                                        "Result will be displayed asynchronously.", prv_read_client},
+        {"write", "Write to a client.\n\n Long description:\n write CLIENT# URI DATA\r\n"
+                                        "   CLIENT#: client number as returned by command 'list'\r\n"
+                                        "   URI: uri to write to such as /3, /3//2, /3/0/2, /1024/11, /1024//1\r\n"
+                                        "   DATA: data to write\r\n"
+                                        "Result will be displayed asynchronously.", prv_write_client},
+        {"exec", "Execute a client resource.\n\n Long description:\n exec CLIENT# URI\r\n"
+                                        "   CLIENT#: client number as returned by command 'list'\r\n"
+                                        "   URI: uri of the resource to execute such as /3/0/2\r\n"
+                                        "Result will be displayed asynchronously.", prv_exec_client},
+        {"del", "Delete a client Object instance.\n\n Long description:\n del CLIENT# URI\r\n"
+                                        "   CLIENT#: client number as returned by command 'list'\r\n"
+                                        "   URI: uri of the instance to delete such as /1024/11\r\n"
+                                        "Result will be displayed asynchronously.", prv_delete_client},
+        {"create", "create an Object instance.\n\n Long description:\n create CLIENT# URI DATA\r\n"
+                                        "   CLIENT#: client number as returned by command 'list'\r\n"
+                                        "   URI: uri to which create the Object Instance such as /1024, /1024/45 \r\n"
+                                        "   DATA: data to initialize the new Object Instance (0-255 for object 1024) \r\n"
+                                        "Result will be displayed asynchronously.", prv_create_client},
+        {"observe", "Observe from a client.\n\n Long description:\n observe CLIENT# URI\r\n"
+                                        "   CLIENT#: client number as returned by command 'list'\r\n"
+                                        "   URI: uri to observe such as /3, /3/0/2, /1024/11\r\n"
+                                        "Result will be displayed asynchronously.", prv_observe_client},
+        {"cancel", "Cancel an observe.\n\n Long description:\n cancel CLIENT# URI\r\n"
+                                        "   CLIENT#: client number as returned by command 'list'\r\n"
+                                        "   URI: uri on which to cancel an observe such as /3, /3/0/2, /1024/11\r\n"
+                                        "Result will be displayed asynchronously.", prv_cancel_client},
 
-            {"q", "Quit the server.", prv_quit},
+        {"q", "Quit the server.", prv_quit},
 
-            { NULL, NULL, NULL }
+        { NULL, NULL, NULL }
 };
 /* -------------------------------------------------- */
 
 
+static void _dump_snip(ng_pktsnip_t *pkt)
+{
+    switch (pkt->type) {
+        case NG_NETTYPE_UNDEF:
+            printf("NETTYPE_UNDEF (%i)\n", pkt->type);
+            od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
+            break;
+#ifdef MODULE_NG_NETIF
+        case NG_NETTYPE_NETIF:
+            printf("NETTYPE_NETIF (%i)\n", pkt->type);
+            ng_netif_hdr_print(pkt->data);
+            break;
+#endif
+#ifdef MODULE_NG_SIXLOWPAN
+        case NG_NETTYPE_SIXLOWPAN:
+            printf("NETTYPE_SIXLOWPAN (%i)\n", pkt->type);
+            ng_sixlowpan_print(pkt->data, pkt->size);
+            break;
+#endif
+#ifdef MODULE_NG_IPV6
+        case NG_NETTYPE_IPV6:
+            printf("NETTYPE_IPV6 (%i)\n", pkt->type);
+            ng_ipv6_hdr_print(pkt->data);
+            break;
+#endif
+#ifdef MODULE_NG_ICMPV6
+        case NG_NETTYPE_ICMPV6:
+            printf("NETTYPE_ICMPV6 (%i)\n", pkt->type);
+            break;
+#endif
+#ifdef MODULE_NG_TCP
+        case NG_NETTYPE_TCP:
+            printf("NETTYPE_TCP (%i)\n", pkt->type);
+            break;
+#endif
+#ifdef MODULE_NG_UDP
+        case NG_NETTYPE_UDP:
+            printf("NETTYPE_UDP (%i)\n", pkt->type);
+            ng_udp_hdr_print(pkt->data);
+            break;
+#endif
+#ifdef TEST_SUITES
+        case NG_NETTYPE_TEST:
+            printf("NETTYPE_TEST (%i)\n", pkt->type);
+            od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
+            break;
+#endif
+        default:
+            printf("NETTYPE_UNKNOWN (%i)\n", pkt->type);
+            od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
+            break;
+    }
+}
+
+int _dump(ng_pktsnip_t *pkt)
+{
+    int snips = 0;
+    int size = 0;
+    ng_pktsnip_t *snip = pkt;
+
+    while (snip != NULL) {
+        printf("~~ SNIP %2i - size: %3u byte, type: ", snips,
+               (unsigned int)snip->size);
+        _dump_snip(snip);
+        ++snips;
+        size += snip->size;
+        snip = snip->next;
+    }
+
+    printf("~~ PKT    - %2i snips, total size: %3i byte\n", snips, size);
+    ng_pktbuf_release(pkt);
+
+    return size;
+}
+
+
+
+static void *_eventloop(void *arg)
+{
+    (void)arg;
+    msg_t msg, reply;
+    msg_t msg_queue[1024];
+    int size;
+    connection_t * connP;
+
+    /* setup the message queue */
+    msg_init_queue(msg_queue, 1024);
+
+    reply.content.value = (uint32_t)(-ENOTSUP);
+    reply.type = NG_NETAPI_MSG_TYPE_ACK;
+
+    while (1) {
+        msg_receive(&msg);
+
+
+
+        switch (msg.type) {
+            case NG_NETAPI_MSG_TYPE_RCV:
+                puts("PKTDUMP: data received:");
+                size = _dump((ng_pktsnip_t *)msg.content.ptr);
+                //connP = connection_find(connList, &addr, addrLen);
+                if (connP == NULL)
+                {
+                    //problem here
+                    //connP = connection_new_incoming(connList, sock, (struct sockaddr *)&addr, addrLen);
+                    if (connP != NULL)
+                    {
+                        connList = connP;
+                    }
+                }
+                if (connP != NULL)
+                {
+                    lwm2m_handle_packet(lwm2mH, msg.content.value, size, connP);
+                }
+                break;
+            case NG_NETAPI_MSG_TYPE_SND:
+                puts("PKTDUMP: data to send:");
+                _dump((ng_pktsnip_t *)msg.content.ptr);
+                break;
+            case NG_NETAPI_MSG_TYPE_GET:
+            case NG_NETAPI_MSG_TYPE_SET:
+                msg_reply(&msg, &reply);
+                break;
+            default:
+                puts("PKTDUMP: received something unexpected");
+                break;
+        }
+    }
+
+    /* never reached */
+    return NULL;
+}
 
 int main(int argc, char *argv[])
 {
@@ -728,6 +883,14 @@ int main(int argc, char *argv[])
     //connection_t * connList = NULL;
 
 
+    if (_pid == KERNEL_PID_UNDEF) {
+        _pid = thread_create(_stack, sizeof(_stack), NG_PKTDUMP_PRIO,
+                             CREATE_STACKTEST, _eventloop, NULL, "udp-listen");
+    }
+
+
+
+    (void) posix_open(uart0_handler_pid, 0);
     /* ----------------- my variables ------------------- */
     shell_t shell;
     /* -------------------------------------------------- */
@@ -735,138 +898,7 @@ int main(int argc, char *argv[])
     shell_init(&shell, commands, UART0_BUFSIZE, uart0_readc, uart0_putc);
     shell_run(&shell);
 
-    
-/*
-    sock = create_socket(LWM2M_STANDARD_PORT_STR);
-    if (sock < 0)
-    {
-        fprintf(stderr, "Error opening socket: %d\r\n", errno);
-        return -1;
-    }
 
-    lwm2mH = lwm2m_init(NULL, prv_buffer_send, NULL);
-    if (NULL == lwm2mH)
-    {
-        fprintf(stderr, "lwm2m_init() failed\r\n");
-        return -1;
-    }
 
-    signal(SIGINT, handle_sigint);
-
-    for (i = 0 ; commands[i].name != NULL ; i++)
-    {
-        commands[i].userData = (void *)lwm2mH;
-    }
-    fprintf(stdout, "> "); fflush(stdout);
-
-    lwm2m_set_monitoring_callback(lwm2mH, prv_monitor_callback, lwm2mH);
-
-    while (0 == g_quit)
-    {
-        FD_ZERO(&readfds);
-        FD_SET(sock, &readfds);
-        FD_SET(STDIN_FILENO, &readfds);
-
-        tv.tv_sec = 60;
-        tv.tv_usec = 0;
-
-        result = lwm2m_step(lwm2mH, &(tv.tv_sec));
-        if (result != 0)
-        {
-            fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
-            return -1;
-        }
-
-        result = select(FD_SETSIZE, &readfds, 0, 0, &tv);
-
-        if ( result < 0 )
-        {
-            if (errno != EINTR)
-            {
-              fprintf(stderr, "Error in select(): %d\r\n", errno);
-            }
-        }
-        else if (result > 0)
-        {
-            uint8_t buffer[MAX_PACKET_SIZE];
-            int numBytes;
-
-            if (FD_ISSET(sock, &readfds))
-            {
-                struct sockaddr_storage addr;
-                socklen_t addrLen;
-
-                addrLen = sizeof(addr);
-                numBytes = recvfrom(sock, buffer, MAX_PACKET_SIZE, 0, (struct sockaddr *)&addr, &addrLen);
-
-                if (numBytes == -1)
-                {
-                    fprintf(stderr, "Error in recvfrom(): %d\r\n", errno);
-                }
-                else
-                {
-                    char s[INET6_ADDRSTRLEN];
-                    in_port_t port;
-                    connection_t * connP;
-
-					s[0] = 0;
-                    if (AF_INET == addr.ss_family)
-                    {
-                        struct sockaddr_in *saddr = (struct sockaddr_in *)&addr;
-                        inet_ntop(saddr->sin_family, &saddr->sin_addr, s, INET6_ADDRSTRLEN);
-                        port = saddr->sin_port;
-                    }
-                    else if (AF_INET6 == addr.ss_family)
-                    {
-                        struct sockaddr_in6 *saddr = (struct sockaddr_in6 *)&addr;
-                        inet_ntop(saddr->sin6_family, &saddr->sin6_addr, s, INET6_ADDRSTRLEN);
-                        port = saddr->sin6_port;
-                    }
-
-                    fprintf(stderr, "%d bytes received from [%s]:%hu\r\n", numBytes, s, ntohs(port));
-                    output_buffer(stderr, buffer, numBytes, 0);
-
-                    connP = connection_find(connList, &addr, addrLen);
-                    if (connP == NULL)
-                    {
-                        connP = connection_new_incoming(connList, sock, (struct sockaddr *)&addr, addrLen);
-                        if (connP != NULL)
-                        {
-                            connList = connP;
-                        }
-                    }
-                    if (connP != NULL)
-                    {
-                        lwm2m_handle_packet(lwm2mH, buffer, numBytes, connP);
-                    }
-                }
-            }
-            else if (FD_ISSET(STDIN_FILENO, &readfds))
-            {
-                numBytes = read(STDIN_FILENO, buffer, MAX_PACKET_SIZE - 1);
-
-                if (numBytes > 1)
-                {
-                    buffer[numBytes] = 0;
-                    fprintf(stdout, "STDIN %d bytes '%s'\r\n> ", numBytes, buffer);
-                    handle_command(commands, (char*)buffer);
-                }
-                if (g_quit == 0)
-                {
-                    fprintf(stdout, "\r\n> ");
-                    fflush(stdout);
-                }
-                else
-                {
-                    fprintf(stdout, "\r\n");
-                }
-            }
-        }
-    }
-
-    lwm2m_close(lwm2mH);
-    close(sock);
-    connection_free(connList);
-*/
     return 0;
 }
