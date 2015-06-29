@@ -71,7 +71,7 @@
 
 
 #include "commandline.h"
-#include "connection.h"
+#include "connection-n_shell.h"
 
 
 #include "shell.h"
@@ -87,6 +87,7 @@
 #include "net/ng_ipv6/hdr.h"
 #include "net/ng_sixlowpan.h"
 #include "net/ng_udp.h"
+#include "net/ng_pkt.h"
 #include "od.h"
 
 /**
@@ -105,10 +106,14 @@ static char _stack[NG_PKTDUMP_STACKSIZE];
  * or internals.h LWM2M_MAX_PACKET_SIZE!
  */
 #define MAX_PACKET_SIZE 198
+#define DEFAULT_PORT 4242
 
 static int g_quit = 0;
 lwm2m_context_t * lwm2mH = NULL;
 connection_t * connList = NULL;
+
+static ng_netreg_entry_t server = {NULL, NG_NETREG_DEMUX_CTX_ALL,
+                                   KERNEL_PID_UNDEF};
 
 static void prv_print_error(uint8_t status)
 {
@@ -636,12 +641,79 @@ void print_usage(void)
     fprintf(stderr, "Launch a LWM2M server on localhost port "LWM2M_STANDARD_PORT_STR".\r\n\n");
 }
 
-
-
-
-
-
 /* ----------------- my methods --------------------- */
+
+static void *_eventloop(void *arg)
+{
+    (void)arg;
+    msg_t msg, reply;
+    msg_t msg_queue[1024];
+    int size;
+    connection_t * connP;
+    ng_pktsnip_t * snip;
+    ng_pktsnip_t * tmp;
+
+    /* setup the message queue */
+    msg_init_queue(msg_queue, 1024);
+
+    reply.content.value = (uint32_t)(-ENOTSUP);
+    reply.type = NG_NETAPI_MSG_TYPE_ACK;
+
+    while (1) {
+        msg_receive(&msg);
+        //read ng_pkt.buff
+
+
+        switch (msg.type) {
+            case NG_NETAPI_MSG_TYPE_RCV:
+                snip = (ng_pktsnip_t *)msg.content.ptr;
+                //TODO loop to get addr
+                tmp = snip->next;
+                while (tmp && (tmp->type!= NG_NETTYPE_IPV6));
+                if(tmp == NULL) {
+                    puts("ERROR: no ipv6 address found");
+                    exit(0);
+                }
+                ng_ipv6_hdr_t *ip = (ng_ipv6_hdr_t *)tmp->data;
+                ng_ipv6_addr_t *src = &(ip->src);
+                connP = connection_find(connList, src, sizeof(ng_ipv6_addr_t));
+                //TODO make new connection_t type with only what i need
+                //TODO redo connection.c for the new connection_t
+                if (connP == NULL)
+                {
+                    connP = connection_new_incoming(connList, src, sizeof(ng_ipv6_addr_t));
+                    connP->port = DEFAULT_PORT;
+                    if (connP != NULL)
+                    {
+                        connList = connP;
+                    }
+                }
+                if (connP != NULL)
+                {
+                    connP->port = DEFAULT_PORT;
+                    lwm2m_handle_packet(lwm2mH, snip, snip->size, connP);
+                }
+                //lwm2m_handle_packet(lwm2mH, snip, snip.size, connP);
+                puts("PKTDUMP: data received:");
+                ng_pktbuf_release(snip);
+                break;
+            case NG_NETAPI_MSG_TYPE_SND:
+                puts("PKTDUMP: data to send:");
+                _dump((ng_pktsnip_t *)msg.content.ptr);
+                break;
+            case NG_NETAPI_MSG_TYPE_GET:
+            case NG_NETAPI_MSG_TYPE_SET:
+                msg_reply(&msg, &reply);
+                break;
+            default:
+                puts("PKTDUMP: received something unexpected");
+                break;
+        }
+    }
+
+    /* never reached */
+    return NULL;
+}
 
 int prv_init(void)
 {
@@ -652,51 +724,21 @@ int prv_init(void)
         return -1;
     }
 
-    signal(SIGINT, handle_sigint);
+    if (_pid == KERNEL_PID_UNDEF) {
+    _pid = thread_create(_stack, sizeof(_stack), NG_PKTDUMP_PRIO,
+                         CREATE_STACKTEST, _eventloop, NULL, "udp-listen");
+    }
 
-    fprintf(stdout, "> "); fflush(stdout);
+    server.pid = ng_pktdump_getpid();
+    server.demux_ctx = DEFAULT_PORT;
+    ng_netreg_register(NG_NETTYPE_UDP, &server);
 
     lwm2m_set_monitoring_callback(lwm2mH, prv_monitor_callback, lwm2mH);
 
     return 0;
 }
 
-/*
 
-int lwm2m_cmd(int argc, char **argv)
-{
-    if (argc < 2) {
-        prv_displayHelp(commands, NULL);
-        return 1;
-    }
-    else if( ) { //do init here
-
-    }
-    else
-        handle_command(commands, *argv);
-
-    if( g_quit == 0) {
-        fprintf(stdout, "\r\n> ");
-        fflush(stdout);
-        lwm2m_close(lwm2mH);
-        //close(sock);
-        connection_free(connList);
-        exit(1);
-    }
-    else
-        fprintf(stdout, "\r\n> ");
-
-
-    return 0;
-}
-
-/* -------------------------------------------------- */
-
-/* ----------------- my constants ------------------- */
-// static const shell_command_t shell_commands[] = {
-//     { "lwm2m", "use lwm2m magic commands", lwm2m_cmd },
-//     { NULL, NULL, NULL }
-// };
 static const shell_command_t commands[] =
 {
         {"init", "Initialize the protocol.", prv_init},
@@ -738,139 +780,9 @@ static const shell_command_t commands[] =
 };
 /* -------------------------------------------------- */
 
-
-static void _dump_snip(ng_pktsnip_t *pkt)
-{
-    switch (pkt->type) {
-        case NG_NETTYPE_UNDEF:
-            printf("NETTYPE_UNDEF (%i)\n", pkt->type);
-            od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
-            break;
-#ifdef MODULE_NG_NETIF
-        case NG_NETTYPE_NETIF:
-            printf("NETTYPE_NETIF (%i)\n", pkt->type);
-            ng_netif_hdr_print(pkt->data);
-            break;
-#endif
-#ifdef MODULE_NG_SIXLOWPAN
-        case NG_NETTYPE_SIXLOWPAN:
-            printf("NETTYPE_SIXLOWPAN (%i)\n", pkt->type);
-            ng_sixlowpan_print(pkt->data, pkt->size);
-            break;
-#endif
-#ifdef MODULE_NG_IPV6
-        case NG_NETTYPE_IPV6:
-            printf("NETTYPE_IPV6 (%i)\n", pkt->type);
-            ng_ipv6_hdr_print(pkt->data);
-            break;
-#endif
-#ifdef MODULE_NG_ICMPV6
-        case NG_NETTYPE_ICMPV6:
-            printf("NETTYPE_ICMPV6 (%i)\n", pkt->type);
-            break;
-#endif
-#ifdef MODULE_NG_TCP
-        case NG_NETTYPE_TCP:
-            printf("NETTYPE_TCP (%i)\n", pkt->type);
-            break;
-#endif
-#ifdef MODULE_NG_UDP
-        case NG_NETTYPE_UDP:
-            printf("NETTYPE_UDP (%i)\n", pkt->type);
-            ng_udp_hdr_print(pkt->data);
-            break;
-#endif
-#ifdef TEST_SUITES
-        case NG_NETTYPE_TEST:
-            printf("NETTYPE_TEST (%i)\n", pkt->type);
-            od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
-            break;
-#endif
-        default:
-            printf("NETTYPE_UNKNOWN (%i)\n", pkt->type);
-            od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
-            break;
-    }
-}
-
-int _dump(ng_pktsnip_t *pkt)
-{
-    int snips = 0;
-    int size = 0;
-    ng_pktsnip_t *snip = pkt;
-
-    while (snip != NULL) {
-        printf("~~ SNIP %2i - size: %3u byte, type: ", snips,
-               (unsigned int)snip->size);
-        _dump_snip(snip);
-        ++snips;
-        size += snip->size;
-        snip = snip->next;
-    }
-
-    printf("~~ PKT    - %2i snips, total size: %3i byte\n", snips, size);
-    ng_pktbuf_release(pkt);
-
-    return size;
-}
+//send function TODO , remake udp.c send without parsing
 
 
-
-static void *_eventloop(void *arg)
-{
-    (void)arg;
-    msg_t msg, reply;
-    msg_t msg_queue[1024];
-    int size;
-    connection_t * connP;
-
-    /* setup the message queue */
-    msg_init_queue(msg_queue, 1024);
-
-    reply.content.value = (uint32_t)(-ENOTSUP);
-    reply.type = NG_NETAPI_MSG_TYPE_ACK;
-
-    while (1) {
-        msg_receive(&msg);
-
-
-
-        switch (msg.type) {
-            case NG_NETAPI_MSG_TYPE_RCV:
-                puts("PKTDUMP: data received:");
-                size = _dump((ng_pktsnip_t *)msg.content.ptr);
-                //connP = connection_find(connList, &addr, addrLen);
-                if (connP == NULL)
-                {
-                    //problem here
-                    //connP = connection_new_incoming(connList, sock, (struct sockaddr *)&addr, addrLen);
-                    if (connP != NULL)
-                    {
-                        connList = connP;
-                    }
-                }
-                if (connP != NULL)
-                {
-                    lwm2m_handle_packet(lwm2mH, msg.content.value, size, connP);
-                }
-                break;
-            case NG_NETAPI_MSG_TYPE_SND:
-                puts("PKTDUMP: data to send:");
-                _dump((ng_pktsnip_t *)msg.content.ptr);
-                break;
-            case NG_NETAPI_MSG_TYPE_GET:
-            case NG_NETAPI_MSG_TYPE_SET:
-                msg_reply(&msg, &reply);
-                break;
-            default:
-                puts("PKTDUMP: received something unexpected");
-                break;
-        }
-    }
-
-    /* never reached */
-    return NULL;
-}
 
 int main(int argc, char *argv[])
 {
@@ -881,12 +793,6 @@ int main(int argc, char *argv[])
     //lwm2m_context_t * lwm2mH = NULL;
     int i;
     //connection_t * connList = NULL;
-
-
-    if (_pid == KERNEL_PID_UNDEF) {
-        _pid = thread_create(_stack, sizeof(_stack), NG_PKTDUMP_PRIO,
-                             CREATE_STACKTEST, _eventloop, NULL, "udp-listen");
-    }
 
 
 

@@ -12,6 +12,8 @@ USEMODULE += uart0
 USEMODULE += shell
 USEMODULE += shell_commands
 USEMODULE += ps
+USEMODULE += ng_ipv6_default
+USEMODULE += ng_udp
 INCLUDES += -I$(RIOTBASE)/sys/wakaama
 
 # Comment this out to disable code in RIOT that does safety checking
