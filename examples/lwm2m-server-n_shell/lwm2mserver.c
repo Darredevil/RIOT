@@ -689,7 +689,7 @@ static void *_eventloop(void *arg)
                 if (connP != NULL)
                 {
                     connP->port = DEFAULT_PORT;
-                    lwm2m_handle_packet(lwm2mH, snip, snip->size, connP);
+                    lwm2m_handle_packet(lwm2mH, snip->data, snip->size, connP);
                 }
                 //lwm2m_handle_packet(lwm2mH, snip, snip.size, connP);
                 puts("PKTDUMP: data received:");

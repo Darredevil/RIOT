@@ -241,9 +241,10 @@ static void * prv_connect_server(uint16_t secObjInstID, void * userData)
     char * ptr;
     connection_t * newConnP = NULL;
 
-    //dataP = (client_data_t *)userData;
+    dataP = (client_data_t *)userData;
     //TODO check wtf
-    dataP = (client_data_t *)((void*)lwm2mH);
+    //dataP = (client_data_t *)((void*)lwm2mH);
+    //dataP = &data;
 
     uri = get_server_uri(dataP->securityObjP, secObjInstID);
 
@@ -852,7 +853,7 @@ static void *_eventloop(void *arg)
                 if (connP != NULL)
                 {
                     //connP->port = DEFAULT_PORT;
-                    lwm2m_handle_packet(lwm2mH, snip, snip->size, connP); //TODO check is snip or snip->data
+                    lwm2m_handle_packet(lwm2mH, snip->data, snip->size, connP); //TODO check is snip or snip->data
                     conn_s_updateRxStatistic(objArray[7], snip->size, false);
                 }
                 else

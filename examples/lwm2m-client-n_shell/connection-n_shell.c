@@ -114,6 +114,8 @@ connection_t * connection_create(connection_t * connList,
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
+    ng_ipv6_addr_t *result;
+
     if (0 >= sprintf(portStr, "%hu", port)) return NULL;
     if (0 != getaddrinfo(host, portStr, &hints, &servinfo) || servinfo == NULL) return NULL;
 
@@ -136,7 +138,12 @@ connection_t * connection_create(connection_t * connList,
     // }
     // if (s >= 0)
     // {
-        connP = connection_new_incoming(connList, sa, sl);
+   if(ng_ipv6_addr_from_str(result,host) == NULL) {
+        printf("ERROR getting address\n");
+        return NULL;
+   }
+   else
+        connP = connection_new_incoming(connList, result, sizeof(ng_ipv6_addr_t));
         //close(s);
     //}
     if (NULL != servinfo) {
