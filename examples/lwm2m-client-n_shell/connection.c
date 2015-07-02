@@ -13,16 +13,13 @@
  * Contributors:
  *    David Navarro, Intel Corporation - initial API and implementation
  *    Pascal Rieux - Please refer to git log
- *
+ *    
  *******************************************************************************/
 
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "connection-n_shell.h"
-#include "net/ng_ipv6/addr.h"
-#include "net/ng_pkt.h"
-#include "net/ng_netreg.h"
+#include "connection.h"
 
 int create_socket(const char * portStr)
 {
@@ -60,7 +57,7 @@ int create_socket(const char * portStr)
 }
 
 connection_t * connection_find(connection_t * connList,
-                               ng_ipv6_addr_t * addr,
+                               struct sockaddr_storage * addr,
                                size_t addrLen)
 {
     connection_t * connP;
@@ -80,7 +77,8 @@ connection_t * connection_find(connection_t * connList,
 }
 
 connection_t * connection_new_incoming(connection_t * connList,
-                                       ng_ipv6_addr_t * addr,
+                                       int sock,
+                                       struct sockaddr * addr,
                                        size_t addrLen)
 {
     connection_t * connP;
@@ -88,6 +86,7 @@ connection_t * connection_new_incoming(connection_t * connList,
     connP = (connection_t *)malloc(sizeof(connection_t));
     if (connP != NULL)
     {
+        connP->sock = sock;
         memcpy(&(connP->addr), addr, addrLen);
         connP->addrLen = addrLen;
         connP->next = connList;
@@ -97,6 +96,7 @@ connection_t * connection_new_incoming(connection_t * connList,
 }
 
 connection_t * connection_create(connection_t * connList,
+                                 int sock,
                                  char * host,
                                  uint16_t port)
 {
@@ -134,7 +134,7 @@ connection_t * connection_create(connection_t * connList,
     }
     if (s >= 0)
     {
-        connP = connection_new_incoming(connList, sa, sl);
+        connP = connection_new_incoming(connList, sock, sa, sl);
         close(s);
     }
     if (NULL != servinfo) {
@@ -161,7 +161,6 @@ int connection_send(connection_t *connP,
                     uint8_t * buffer,
                     size_t length)
 {
-    /*
     int nbSent;
     size_t offset;
 
@@ -173,66 +172,6 @@ int connection_send(connection_t *connP,
         offset += nbSent;
     }
     return 0;
-*/
-
-    ////////////////////////////
-
-
-    uint8_t port[2];
-    //uint16_t tmp;
-    ng_pktsnip_t *payload, *udp, *ip;
-    //ng_ipv6_addr_t addr;
-    ng_netreg_entry_t *sendto;
-
-    /* parse destination address
-    if (ng_ipv6_addr_from_str(&addr, addr_str) == NULL) {
-        puts("Error: unable to parse destination address");
-        return;
-    }
-    /* parse port
-    tmp = (uint16_t)atoi(port_str);
-    if (tmp == 0) {
-        puts("Error: unable to parse destination port");
-        return;
-    }
-    */
-    port[0] = connP->port;
-    port[1] = connP->port >> 8;
-
-    /* allocate payload */
-    //payload = ng_pktbuf_add(NULL, data, strlen(data), NG_NETTYPE_UNDEF);
-    payload = ng_pktbuf_add(NULL, (void*)buffer, length, NG_NETTYPE_UNDEF);
-    if (payload == NULL) {
-        puts("Error: unable to copy data to packet buffer");
-        return;
-    }
-    /* allocate UDP header, set source port := destination port */
-    udp = ng_udp_hdr_build(payload, port, 2, port, 2);
-    if (udp == NULL) {
-        puts("Error: unable to allocate UDP header");
-        ng_pktbuf_release(payload);
-        return;
-    }
-    /* allocate IPv6 header */
-    ip = ng_ipv6_hdr_build(udp, NULL, 0, (uint8_t *)&connP->addr, sizeof(ng_ipv6_addr_t));
-    if (ip == NULL) {
-        puts("Error: unable to allocate IPv6 header");
-        ng_pktbuf_release(udp);
-        return;
-    }
-    /* send packet */
-    sendto = ng_netreg_lookup(NG_NETTYPE_UDP, NG_NETREG_DEMUX_CTX_ALL);
-    if (sendto == NULL) {
-        puts("Error: unable to locate UDP thread");
-        ng_pktbuf_release(ip);
-        return;
-    }
-    ng_pktbuf_hold(ip, ng_netreg_num(NG_NETTYPE_UDP,
-                                     NG_NETREG_DEMUX_CTX_ALL) - 1);
-    while (sendto != NULL) {
-        ng_netapi_send(sendto->pid, ip);
-        sendto = ng_netreg_getnext(sendto);
-    }
-    //printf("Success: send %i byte to %s:%u\n", payload->size, addr_str, tmp);
-    printf("Success: sent %i byte \n", payload->size);
 }
+
+

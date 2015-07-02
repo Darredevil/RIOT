@@ -23,6 +23,7 @@
 #include "net/ng_ipv6/addr.h"
 #include "net/ng_pkt.h"
 #include "net/ng_netreg.h"
+#include "net/ng_nettype.h"
 
 int create_socket(const char * portStr)
 {
@@ -116,27 +117,28 @@ connection_t * connection_create(connection_t * connList,
     if (0 >= sprintf(portStr, "%hu", port)) return NULL;
     if (0 != getaddrinfo(host, portStr, &hints, &servinfo) || servinfo == NULL) return NULL;
 
+    //TODO make another RIOT-style check
     // we test the various addresses
-    s = -1;
-    for(p = servinfo ; p != NULL && s == -1 ; p = p->ai_next)
-    {
-        s = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-        if (s >= 0)
-        {
-            sa = p->ai_addr;
-            sl = p->ai_addrlen;
-            if (-1 == connect(s, p->ai_addr, p->ai_addrlen))
-            {
-                close(s);
-                s = -1;
-            }
-        }
-    }
-    if (s >= 0)
-    {
+    // s = -1;
+    // for(p = servinfo ; p != NULL && s == -1 ; p = p->ai_next)
+    // {
+    //     s = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+    //     if (s >= 0)
+    //     {
+    //         sa = p->ai_addr;
+    //         sl = p->ai_addrlen;
+    //         if (-1 == connect(s, p->ai_addr, p->ai_addrlen))
+    //         {
+    //             close(s);
+    //             s = -1;
+    //         }
+    //     }
+    // }
+    // if (s >= 0)
+    // {
         connP = connection_new_incoming(connList, sa, sl);
-        close(s);
-    }
+        //close(s);
+    //}
     if (NULL != servinfo) {
         free(servinfo);
     }

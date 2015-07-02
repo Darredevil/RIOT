@@ -189,24 +189,22 @@ static void prv_dump_client(lwm2m_client_t * targetP)
     fprintf(stdout, "\r\n");
 }
 
-static void prv_output_clients(char * buffer,
-                               void * user_data)
+static void prv_output_clients(void)
 {
-    lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
+    //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     lwm2m_client_t * targetP;
 
     targetP = lwm2mH->clientList;
-
     if (targetP == NULL)
     {
         fprintf(stdout, "No client.\r\n");
         return;
     }
-
     for (targetP = lwm2mH->clientList ; targetP != NULL ; targetP = targetP->next)
     {
         prv_dump_client(targetP);
     }
+
 }
 
 static int prv_read_id(char * buffer,
@@ -587,7 +585,7 @@ static void prv_monitor_callback(uint16_t clientID,
                                  int dataLength,
                                  void * userData)
 {
-    lwm2m_context_t * lwm2mH = (lwm2m_context_t *) userData;
+    //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) userData;
     lwm2m_client_t * targetP;
 
     switch (status)
@@ -699,7 +697,7 @@ static void *_eventloop(void *arg)
                 break;
             case NG_NETAPI_MSG_TYPE_SND:
                 puts("PKTDUMP: data to send:");
-                _dump((ng_pktsnip_t *)msg.content.ptr);
+                //_dump((ng_pktsnip_t *)msg.content.ptr);
                 break;
             case NG_NETAPI_MSG_TYPE_GET:
             case NG_NETAPI_MSG_TYPE_SET:
@@ -729,7 +727,7 @@ int prv_init(void)
                          CREATE_STACKTEST, _eventloop, NULL, "udp-listen");
     }
 
-    server.pid = ng_pktdump_getpid();
+    server.pid = _pid;
     server.demux_ctx = DEFAULT_PORT;
     ng_netreg_register(NG_NETTYPE_UDP, &server);
 
@@ -786,12 +784,12 @@ static const shell_command_t commands[] =
 
 int main(int argc, char *argv[])
 {
-    int sock;
-    fd_set readfds;
-    struct timeval tv;
-    int result;
+    //int sock;
+    //fd_set readfds;
+    //struct timeval tv;
+    //int result;
     //lwm2m_context_t * lwm2mH = NULL;
-    int i;
+    //int i;
     //connection_t * connList = NULL;
 
 
