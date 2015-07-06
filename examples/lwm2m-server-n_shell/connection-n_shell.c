@@ -21,9 +21,13 @@
 #include <ctype.h>
 #include "connection-n_shell.h"
 #include "net/ng_ipv6/addr.h"
+#include "net/ng_ipv6/hdr.h"
 #include "net/ng_pkt.h"
 #include "net/ng_netreg.h"
 #include "net/ng_nettype.h"
+#include "net/ng_pktbuf.h"
+#include "net/ng_udp.h"
+#include "net/ng_netapi.h"
 
 int create_socket(const char * portStr)
 {
@@ -104,17 +108,17 @@ connection_t * connection_create(connection_t * connList,
     char portStr[6];
     struct addrinfo hints;
     struct addrinfo *servinfo = NULL;
-    struct addrinfo *p;
-    int s;
-    struct sockaddr *sa;
-    socklen_t sl;
+    // struct addrinfo *p;
+    // int s;
+    // struct sockaddr *sa;
+    // socklen_t sl;
     connection_t * connP = NULL;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-    ng_ipv6_addr_t *result;
+    ng_ipv6_addr_t result;
 
     if (0 >= sprintf(portStr, "%hu", port)) return NULL;
     if (0 != getaddrinfo(host, portStr, &hints, &servinfo) || servinfo == NULL) return NULL;
@@ -138,11 +142,11 @@ connection_t * connection_create(connection_t * connList,
     // }
     // if (s >= 0)
     // {
-   if(ng_ipv6_addr_from_str(result,host) == NULL) {
+   if(ng_ipv6_addr_from_str(&result,host) == NULL) {
         printf("ERROR getting address\n");
    }
    else
-        connP = connection_new_incoming(connList, result, sizeof(ng_ipv6_addr_t));
+        connP = connection_new_incoming(connList, &result, sizeof(ng_ipv6_addr_t));
         //close(s);
     //}
     if (NULL != servinfo) {
@@ -197,7 +201,7 @@ int connection_send(connection_t *connP,
         puts("Error: unable to parse destination address");
         return;
     }
-    /* parse port
+    // parse port
     tmp = (uint16_t)atoi(port_str);
     if (tmp == 0) {
         puts("Error: unable to parse destination port");
@@ -212,28 +216,28 @@ int connection_send(connection_t *connP,
     payload = ng_pktbuf_add(NULL, (void*)buffer, length, NG_NETTYPE_UNDEF);
     if (payload == NULL) {
         puts("Error: unable to copy data to packet buffer");
-        return;
+        return -1;
     }
     /* allocate UDP header, set source port := destination port */
     udp = ng_udp_hdr_build(payload, port, 2, port, 2);
     if (udp == NULL) {
         puts("Error: unable to allocate UDP header");
         ng_pktbuf_release(payload);
-        return;
+        return -1;
     }
     /* allocate IPv6 header */
     ip = ng_ipv6_hdr_build(udp, NULL, 0, (uint8_t *)&connP->addr, sizeof(ng_ipv6_addr_t));
     if (ip == NULL) {
         puts("Error: unable to allocate IPv6 header");
         ng_pktbuf_release(udp);
-        return;
+        return -1;
     }
     /* send packet */
     sendto = ng_netreg_lookup(NG_NETTYPE_UDP, NG_NETREG_DEMUX_CTX_ALL);
     if (sendto == NULL) {
         puts("Error: unable to locate UDP thread");
         ng_pktbuf_release(ip);
-        return;
+        return -1;
     }
     ng_pktbuf_hold(ip, ng_netreg_num(NG_NETTYPE_UDP,
                                      NG_NETREG_DEMUX_CTX_ALL) - 1);
@@ -243,4 +247,6 @@ int connection_send(connection_t *connP,
     }
     //printf("Success: send %i byte to %s:%u\n", payload->size, addr_str, tmp);
     printf("Success: sent %i byte \n", payload->size);
+
+    return 0;
 }

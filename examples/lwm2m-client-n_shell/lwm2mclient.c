@@ -102,6 +102,7 @@
 #define MAX_PACKET_SIZE 198
 
 #define DEFAULT_PORT "4242"
+#define DEFAULT_PORT_INT 4242
 
 static kernel_pid_t _pid = KERNEL_PID_UNDEF;
 static char _stack[NG_PKTDUMP_STACKSIZE];
@@ -115,6 +116,8 @@ lwm2m_context_t * lwm2mH = NULL;
 int g_reboot = 0;
 static int g_quit = 0;
 int batterylevelchanging = 0;
+//char * serverIp;
+char serverIp[26];
 
 #ifdef LWM2M_BOOTSTRAP
     lwm2m_bootstrap_state_t previousBootstrapState = NOT_BOOTSTRAPPED;
@@ -286,8 +289,7 @@ exit:
 
 static uint8_t prv_buffer_send(void * sessionH,
                                uint8_t * buffer,
-                               size_t length,
-                               void * userdata)
+                               size_t length)
 {
     connection_t * connP = (connection_t*) sessionH;
 
@@ -828,7 +830,7 @@ static void *_eventloop(void *arg)
         if (result != 0)
         {
             fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
-            return -1;
+            return;
         }
 #ifdef LWM2M_BOOTSTRAP
         update_bootstrap_info(&previousBootstrapState, lwm2mH);
@@ -862,7 +864,7 @@ static void *_eventloop(void *arg)
                 }
                 //lwm2m_handle_packet(lwm2mH, snip, snip.size, connP);
                 puts("PKTDUMP: data received:");
-                output_buffer(stderr, snip, snip->size, 0);
+                output_buffer(stderr, snip->data, snip->size, 0);
                 ng_pktbuf_release(snip);
                 break;
             case NG_NETAPI_MSG_TYPE_SND:
@@ -889,7 +891,7 @@ int prv_init(void)
     int result;
     int i;
     const char * localPort = "56830";
-    const char * server = "localhost";
+    //const char * server = "localhost";
     const char * serverPort = DEFAULT_PORT;
     char * name = "testlwm2mclient";
     int lifetime = 300;
@@ -903,7 +905,7 @@ int prv_init(void)
 
     char serverUri[50];
     int serverId = 123;
-    sprintf (serverUri, "coap://%s:%s", server, serverPort);
+    sprintf (serverUri, "coap://%s:%s", serverIp, serverPort);
 #ifdef LWM2M_BOOTSTRAP
     objArray[0] = get_security_object(serverId, serverUri, bootstrapRequested);
 #else
@@ -1042,7 +1044,7 @@ int prv_init(void)
     }
 
     client.pid = _pid;
-    client.demux_ctx = DEFAULT_PORT;
+    client.demux_ctx = DEFAULT_PORT_INT;
     ng_netreg_register(NG_NETTYPE_UDP, &client);
 
     //lwm2m_set_monitoring_callback(lwm2mH, prv_monitor_callback, lwm2mH);
@@ -1089,12 +1091,26 @@ static const shell_command_t commands[] =
 int main(int argc, char *argv[])
 {
 
-
+    // if(argc == 3) {
+    //     if (strcmp(argv[1],"-ip") == 0)
+    //         serverIp = argv[2];
+    //     return -1;
+    // }
+    // else {
+    //     printf("WTFFFFFFFFFF\n");
+    //     return -1;
+    // }
+    printf("servip ip = \n");
+    scanf("%s",&serverIp);
+    printf("serverIp is now = %s\n",serverIp);
 
     (void) posix_open(uart0_handler_pid, 0);
     /* ----------------- my variables ------------------- */
     shell_t shell;
     /* -------------------------------------------------- */
+
+
+
 
     shell_init(&shell, commands, UART0_BUFSIZE, uart0_readc, uart0_putc);
     shell_run(&shell);

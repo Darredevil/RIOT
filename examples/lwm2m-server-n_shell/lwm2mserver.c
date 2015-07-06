@@ -124,8 +124,7 @@ static void prv_print_error(uint8_t status)
 
 static uint8_t prv_buffer_send(void * sessionH,
                                uint8_t * buffer,
-                               size_t length,
-                               void * userdata)
+                               size_t length)
 {
     connection_t * connP = (connection_t*) sessionH;
 
@@ -233,8 +232,7 @@ static void prv_result_callback(uint16_t clientID,
                                 lwm2m_uri_t * uriP,
                                 int status,
                                 uint8_t * data,
-                                int dataLength,
-                                void * userData)
+                                int dataLength)
 {
     fprintf(stdout, "\r\nClient #%d %d", clientID, uriP->objectId);
     if (LWM2M_URI_IS_SET_INSTANCE(uriP))
@@ -268,8 +266,7 @@ static void prv_notify_callback(uint16_t clientID,
                                 lwm2m_uri_t * uriP,
                                 int count,
                                 uint8_t * data,
-                                int dataLength,
-                                void * userData)
+                                int dataLength)
 {
     fprintf(stdout, "\r\nNotify from client #%d /%d", clientID, uriP->objectId);
     if (LWM2M_URI_IS_SET_INSTANCE(uriP))
@@ -582,8 +579,7 @@ static void prv_monitor_callback(uint16_t clientID,
                                  lwm2m_uri_t * uriP,
                                  int status,
                                  uint8_t * data,
-                                 int dataLength,
-                                 void * userData)
+                                 int dataLength)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) userData;
     lwm2m_client_t * targetP;
@@ -628,10 +624,6 @@ static void prv_quit(void)
     exit(1);
 }
 
-void handle_sigint(int signum)
-{
-    prv_quit();
-}
 
 void print_usage(void)
 {
@@ -646,7 +638,6 @@ static void *_eventloop(void *arg)
     (void)arg;
     msg_t msg, reply;
     msg_t msg_queue[1024];
-    int size;
     connection_t * connP;
     ng_pktsnip_t * snip;
     ng_pktsnip_t * tmp;
@@ -782,7 +773,7 @@ static const shell_command_t commands[] =
 
 
 
-int main(int argc, char *argv[])
+int main(void)
 {
     //int sock;
     //fd_set readfds;
