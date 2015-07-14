@@ -12,12 +12,12 @@
  *
  * Contributors:
  *    Bosch Software Innovations GmbH - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
  * This connectivity statistics object is optional and single instance only
- * 
+ *
  *  Resources:
  *
  *          Name         | ID | Oper. | Inst. | Mand.|  Type   | Range | Units | Descripton |
@@ -156,6 +156,8 @@ static void prv_resetCounter(lwm2m_object_t* objectP, bool start)
 static uint8_t prv_exec(uint16_t instanceId, uint16_t resourceId,
                         uint8_t * buffer, int length, lwm2m_object_t * objectP)
 {
+    (void)buffer;
+
     // this is a single instance object
     if (instanceId != 0)
     {

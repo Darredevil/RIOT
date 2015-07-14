@@ -53,6 +53,7 @@ void init_value_change(lwm2m_context_t * lwm2m)
 
 void init_value_change(lwm2m_context_t * lwm2m)
 {
+    (void)lwm2m;
 }
 
 void system_reboot(void)

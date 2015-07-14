@@ -108,7 +108,6 @@ static char _stack[NG_PKTDUMP_STACKSIZE];
 #define MAX_PACKET_SIZE 198
 #define DEFAULT_PORT 4242
 
-static int g_quit = 0;
 lwm2m_context_t * lwm2mH = NULL;
 connection_t * connList = NULL;
 
@@ -127,6 +126,8 @@ static uint8_t prv_buffer_send(void * sessionH,
                                size_t length,
                                void * userdata)
 {
+    (void)userdata;
+
     connection_t * connP = (connection_t*) sessionH;
 
     if (-1 == connection_send(connP, buffer, length))
@@ -189,13 +190,11 @@ static void prv_dump_client(lwm2m_client_t * targetP)
     fprintf(stdout, "\r\n");
 }
 
-// static void wrap_prv_output_clients(int argc, char** argv)
-// {
-//     prv_output_clients(NULL, (void*)lwm2mH);
-// }
-
-static void prv_output_clients(int argc, char** argv)
+static int prv_output_clients(int argc, char** argv)
 {
+    (void)argc;
+    (void)argv;
+
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     lwm2m_client_t * targetP;
 
@@ -203,12 +202,14 @@ static void prv_output_clients(int argc, char** argv)
     if (targetP == NULL)
     {
         fprintf(stdout, "No client.\r\n");
-        return;
+        return -1;
     }
     for (targetP = lwm2mH->clientList ; targetP != NULL ; targetP = targetP->next)
     {
         prv_dump_client(targetP);
     }
+
+    return 0;
 
 }
 
@@ -241,6 +242,8 @@ static void prv_result_callback(uint16_t clientID,
                                 int dataLength,
                                 void * userData)
 {
+    (void)userData;
+
     fprintf(stdout, "\r\nClient #%d %d", clientID, uriP->objectId);
     if (LWM2M_URI_IS_SET_INSTANCE(uriP))
         fprintf(stdout, "/%d", uriP->instanceId);
@@ -276,6 +279,8 @@ static void prv_notify_callback(uint16_t clientID,
                                 int dataLength,
                                 void * userData)
 {
+    (void)userData;
+
     fprintf(stdout, "\r\nNotify from client #%d /%d", clientID, uriP->objectId);
     if (LWM2M_URI_IS_SET_INSTANCE(uriP))
         fprintf(stdout, "/%d", uriP->instanceId);
@@ -295,7 +300,7 @@ static void prv_notify_callback(uint16_t clientID,
     fflush(stdout);
 }
 
-static void prv_read_client(int argc, char** argv)
+static int prv_read_client(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
@@ -329,13 +334,14 @@ static void prv_read_client(int argc, char** argv)
     {
         prv_print_error(result);
     }
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !");
+    return -1;
 }
 
-static void prv_write_client(int argc, char** argv)
+static int prv_write_client(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
@@ -372,19 +378,19 @@ static void prv_write_client(int argc, char** argv)
     {
         prv_print_error(result);
     }
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !");
+    return -1;
 }
 
 
-static void prv_exec_client(int argc, char** argv)
+static int prv_exec_client(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
-    char * end = NULL;
     char *buffer;
     int result;
 
@@ -423,18 +429,18 @@ static void prv_exec_client(int argc, char** argv)
     {
         prv_print_error(result);
     }
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !");
+    return -1;
 }
 
-static void prv_create_client(int argc, char** argv)
+static int prv_create_client(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
-    char * end = NULL;
     char *buffer;
     int result;
     int64_t value;
@@ -484,18 +490,18 @@ static void prv_create_client(int argc, char** argv)
     {
         prv_print_error(result);
     }
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !");
+    return -1;
 }
 
-static void prv_delete_client(int argc, char** argv)
+static int prv_delete_client(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
-    char* end = NULL;
     char *buffer;
     int result;
 
@@ -523,18 +529,18 @@ static void prv_delete_client(int argc, char** argv)
     {
         prv_print_error(result);
     }
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !");
+    return -1;
 }
 
-static void prv_observe_client(int argc, char** argv)
+static int prv_observe_client(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
-    char* end = NULL;
     char* buffer;
     int result;
 
@@ -562,20 +568,22 @@ static void prv_observe_client(int argc, char** argv)
     {
         prv_print_error(result);
     }
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !");
+    return -1;
 }
 
-static void prv_cancel_client(int argc, char** argv)
+static int prv_cancel_client(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
-    char* end = NULL;
     char *buffer;
     int result;
+
+    (void)argc;
 
     result = prv_read_id(argv[1], &clientId);
     if (result != 1) goto syntax_error;
@@ -599,10 +607,11 @@ static void prv_cancel_client(int argc, char** argv)
     {
         prv_print_error(result);
     }
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !");
+    return -1;
 }
 
 static void prv_monitor_callback(uint16_t clientID,
@@ -612,6 +621,10 @@ static void prv_monitor_callback(uint16_t clientID,
                                  int dataLength,
                                  void * userData)
 {
+    (void)uriP;
+    (void)data;
+    (void)dataLength;
+
     lwm2m_context_t * lwm2mH = (lwm2m_context_t *) userData;
     lwm2m_client_t * targetP;
 
@@ -647,9 +660,11 @@ static void prv_monitor_callback(uint16_t clientID,
 }
 
 
-static void prv_quit(int argc, char** argv)
+static int prv_quit(int argc, char** argv)
 {
-    g_quit = 1;
+    (void)argc;
+    (void)argv;
+
     lwm2m_close(lwm2mH);
     connection_free(connList);
     exit(1);
@@ -740,6 +755,9 @@ static void *_eventloop(void *arg)
 
 int prv_init(int argc, char** argv)
 {
+    (void)argc;
+    (void)argv;
+
     lwm2mH = lwm2m_init(NULL, prv_buffer_send, NULL);
     if (NULL == lwm2mH)
     {
@@ -818,6 +836,8 @@ int main(int argc, char** argv)
     //int i;
     //connection_t * connList = NULL;
 
+    (void)argc;
+    (void)argv;
 
 
     (void) posix_open(uart0_handler_pid, 0);

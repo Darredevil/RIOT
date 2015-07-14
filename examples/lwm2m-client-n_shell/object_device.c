@@ -17,7 +17,7 @@
  *    Axel Lorente - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
  *    Pascal Rieux - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -205,7 +205,7 @@ static uint8_t prv_set_value(lwm2m_tlv_t * tlvP,
     case RES_O_FACTORY_RESET:
         return COAP_405_METHOD_NOT_ALLOWED;
 
-    case RES_O_AVL_POWER_SOURCES: 
+    case RES_O_AVL_POWER_SOURCES:
     {
         lwm2m_tlv_t * subTlvP;
 
@@ -331,7 +331,7 @@ static uint8_t prv_set_value(lwm2m_tlv_t * tlvP,
         lwm2m_tlv_include(subTlvP, 1, tlvP);
 
         return COAP_205_CONTENT;
-    }        
+    }
     case RES_O_RESET_ERROR_CODE:
         return COAP_405_METHOD_NOT_ALLOWED;
 
@@ -358,7 +358,7 @@ static uint8_t prv_set_value(lwm2m_tlv_t * tlvP,
         tlvP->type     = LWM2M_TYPE_RESOURCE;
         tlvP->dataType = LWM2M_TYPE_STRING;
         return COAP_205_CONTENT;
-      
+
     case RES_M_BINDING_MODES:
         tlvP->value  = (uint8_t*)PRV_BINDING_MODE;
         tlvP->length = strlen(PRV_BINDING_MODE);
@@ -478,7 +478,7 @@ static uint8_t prv_device_write(uint16_t instanceId,
             //ToDo IANA TZ Format
             result = COAP_501_NOT_IMPLEMENTED;
             break;
-            
+
         default:
             result = COAP_405_METHOD_NOT_ALLOWED;
         }
@@ -495,6 +495,8 @@ static uint8_t prv_device_execute(uint16_t instanceId,
                                   int length,
                                   lwm2m_object_t * objectP)
 {
+    (void)buffer;
+
     // this is a single instance object
     if (instanceId != 0)
     {
@@ -580,7 +582,7 @@ lwm2m_object_t * get_object_device(void)
             lwm2m_free(deviceObj);
             return NULL;
         }
-        
+
         /*
          * And the private function that will access the object.
          * Those function will be called when a read/write/execute query is made by the server. In fact the library don't need to
@@ -593,7 +595,7 @@ lwm2m_object_t * get_object_device(void)
         deviceObj->userData = lwm2m_malloc(sizeof(device_data_t));
 
         /*
-         * Also some user data can be stored in the object with a private structure containing the needed variables 
+         * Also some user data can be stored in the object with a private structure containing the needed variables
          */
         if (NULL != deviceObj->userData)
         {
@@ -665,6 +667,6 @@ uint8_t device_change(lwm2m_tlv_t * dataArray,
             result = COAP_405_METHOD_NOT_ALLOWED;
             break;
         }
-    
+
     return result;
 }

@@ -15,7 +15,7 @@
  *    Julien Vermillard, Sierra Wireless
  *    Bosch Software Innovations GmbH - Please refer to git log
  *    Pascal Rieux - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -303,6 +303,9 @@ static uint8_t prv_server_execute(uint16_t instanceId,
                                   lwm2m_object_t * objectP)
 
 {
+    (void)buffer;
+    (void)length;
+
     server_instance_t * targetP;
 
     targetP = (server_instance_t *)lwm2m_list_find(objectP->instanceList, instanceId);

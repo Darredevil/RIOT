@@ -15,6 +15,7 @@
  *    Bosch Software Innovations GmbH - Please refer to git log
  *
  *******************************************************************************/
+typedef long int making_compiler_happy;
 
 #ifdef LWM2M_BOOTSTRAP
 #ifdef LWM2M_CLIENT_MODE
@@ -97,6 +98,8 @@ void handle_bootstrap_ack(lwm2m_context_t * context,
         coap_packet_t * message,
         void * fromSessionH)
 {
+    (void)fromSessionH;
+
     if (COAP_204_CHANGED == message->code)
     {
         context->bsState = BOOTSTRAP_PENDING;
@@ -218,5 +221,4 @@ void update_bootstrap_state(lwm2m_context_t * context,
     }
 }
 #endif
-
 #endif

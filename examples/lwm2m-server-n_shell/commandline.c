@@ -13,7 +13,7 @@
  * Contributors:
  *    David Navarro, Intel Corporation - initial API and implementation
  *    Fabien Fleutot - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 #include <string.h>
@@ -268,7 +268,7 @@ void output_tlv(FILE * stream,
             double floatValue;
 
             print_indent(stream, indent+2);
-            fprintf(stream, "data (%ld bytes):\r\n", dataLen);
+            fprintf(stream, "data (%zu bytes):\r\n", dataLen);
             output_buffer(stream, (uint8_t*)buffer + length + dataIndex, dataLen, indent+2);
 
             if (0 < lwm2m_opaqueToInt(buffer + length + dataIndex, dataLen, &intValue))

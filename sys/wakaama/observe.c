@@ -14,7 +14,7 @@
  *    David Navarro, Intel Corporation - initial API and implementation
  *    Toby Jaffey - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -428,6 +428,9 @@ int lwm2m_observe_cancel(lwm2m_context_t * contextP,
                          lwm2m_result_callback_t callback,
                          void * userData)
 {
+    (void)callback;
+    (void)userData;
+
     lwm2m_client_t * clientP;
     lwm2m_observation_t * observationP;
 

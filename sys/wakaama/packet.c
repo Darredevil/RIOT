@@ -96,6 +96,10 @@ static void handle_reset(lwm2m_context_t * contextP,
                          void * fromSessionH,
                          coap_packet_t * message)
 {
+    (void)contextP;
+    (void)fromSessionH;
+    (void)message;
+
 #ifdef LWM2M_CLIENT_MODE
     cancel_observe(contextP, message->mid, fromSessionH);
 #endif
@@ -277,7 +281,7 @@ void lwm2m_handle_packet(lwm2m_context_t * contextP,
                     else
                     {
                         /* resource provides chunk-wise data */
-                        LOG("Blockwise: blockwise resource, new offset %d\n", new_offset);
+                        LOG("Blockwise: blockwise resource, new offset %lld\n", new_offset);
                         coap_set_header_block2(response, block_num, new_offset!=-1 || response->payload_len > block_size, block_size);
                         if (response->payload_len > block_size) coap_set_payload(response, response->payload, block_size);
                     } /* if (resource aware of blockwise) */

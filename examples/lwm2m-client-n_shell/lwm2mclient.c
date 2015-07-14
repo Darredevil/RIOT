@@ -114,10 +114,9 @@ lwm2m_context_t * lwm2mH = NULL;
 
 
 int g_reboot = 0;
-static int g_quit = 0;
 int batterylevelchanging = 0;
-//char * serverIp;
-char serverIp[26];
+char * serverIp;
+//char serverIp[26];
 
 #ifdef LWM2M_BOOTSTRAP
     lwm2m_bootstrap_state_t previousBootstrapState = NOT_BOOTSTRAPPED;
@@ -306,35 +305,40 @@ static uint8_t prv_buffer_send(void * sessionH,
                                size_t length,
                                void * userdata)
 {
+    (void)userdata;
+
     connection_t * connP = (connection_t*) sessionH;
 
     if (connP == NULL)
     {
-        fprintf(stderr, "#> failed sending %lu bytes, missing connection\r\n", length);
+        fprintf(stderr, "#> failed sending %zu bytes, missing connection\r\n", length);
         return COAP_500_INTERNAL_SERVER_ERROR ;
     }
 
     if (-1 == connection_send(connP, buffer, length))
     {
-        fprintf(stderr, "#> failed sending %lu bytes\r\n", length);
+        fprintf(stderr, "#> failed sending %zu bytes\r\n", length);
         return COAP_500_INTERNAL_SERVER_ERROR ;
     }
     conn_s_updateTxStatistic(objArray[7], (uint16_t)length, false);
-    fprintf(stderr, "#> sent %lu bytes\r\n", length);
+    fprintf(stderr, "#> sent %zu bytes\r\n", length);
     return COAP_NO_ERROR;
 }
 
-static void prv_output_servers(int argc, char** argv)
+static int prv_output_servers(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     lwm2m_server_t * targetP;
+
+    (void)argc;
+    (void)argv;
 
     targetP = lwm2mH->serverList;
 
     if (targetP == NULL)
     {
         fprintf(stdout, "No server.\r\n");
-        return;
+        return -1;
     }
 
     for (targetP = lwm2mH->serverList ; targetP != NULL ; targetP = targetP->next)
@@ -365,9 +369,11 @@ static void prv_output_servers(int argc, char** argv)
         }
         fprintf(stdout, "\r\n");
     }
+
+    return 0;
 }
 
-static void prv_change(int argc, char** argv)
+static int prv_change(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     lwm2m_uri_t uri;
@@ -380,7 +386,7 @@ static void prv_change(int argc, char** argv)
     end = get_end_of_arg(argv[1]);
     if (end[0] == 0) goto syntax_error;
 
-    result = lwm2m_stringToUri(buffer, end - buffer, &uri);
+    result = lwm2m_stringToUri(argv[1], end - argv[1], &uri);
     if (result == 0) goto syntax_error;
 
     //buffer = get_next_arg(end, &end);
@@ -396,16 +402,20 @@ static void prv_change(int argc, char** argv)
         buffer = argv[2];
         handle_value_changed(lwm2mH, &uri, buffer, get_end_of_arg(buffer) - buffer);
     }
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !\n");
+    return -1;
 }
 
-static void prv_object_list(int argc, char** argv)
+static int prv_object_list(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *)user_data;
     uint16_t i;
+
+    (void)argc;
+    (void)argv;
 
     for (i = 0 ; i < lwm2mH->numObject ; i++)
     {
@@ -427,6 +437,8 @@ static void prv_object_list(int argc, char** argv)
         }
         fprintf(stdout, "\r\n");
     }
+
+    return 0;
 }
 
 static void prv_instance_dump(lwm2m_object_t * objectP,
@@ -463,16 +475,15 @@ static void prv_instance_dump(lwm2m_object_t * objectP,
 }
 
 
-static void prv_object_dump(int argc, char** argv)
+static int prv_object_dump(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     lwm2m_uri_t uri;
     char * end = NULL;
-    char *buffer;
     int result;
     lwm2m_object_t * objectP;
-    uint16_t i;
 
+    (void)argc;
 
     end = get_end_of_arg(argv[1]);
     if (end[0] == 0) goto syntax_error;
@@ -485,7 +496,7 @@ static void prv_object_dump(int argc, char** argv)
     if (objectP == NULL)
     {
         fprintf(stdout, "Object not found.\n");
-        return;
+        return 0;
     }
 
     if (uri.flag & LWM2M_URI_FLAG_INSTANCE_ID)
@@ -504,13 +515,14 @@ static void prv_object_dump(int argc, char** argv)
         }
     }
 
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !\n");
+    return -1;
 }
 
-static void prv_update(int argc, char** argv)
+static int prv_update(int argc, char** argv)
 {
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *)user_data;
     //if (buffer[0] == 0) goto syntax_error;
@@ -523,10 +535,11 @@ static void prv_update(int argc, char** argv)
     {
         fprintf(stdout, "Registration update error: %d\n", res);
     }
-    return;
+    return 0;
 
 syntax_error:
     fprintf(stdout, "Syntax error !\n");
+    return -1;
 }
 
 static void update_battery_level(lwm2m_context_t * context)
@@ -559,17 +572,26 @@ static void update_battery_level(lwm2m_context_t * context)
 
 #ifdef LWM2M_BOOTSTRAP
 
-static void prv_initiate_bootstrap(int argc, char** argv)
+static int prv_initiate_bootstrap(int argc, char** argv)
 {
+    (void)argc;
+    (void)argv;
+
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *)user_data;
     if ((lwm2mH->bsState != BOOTSTRAP_CLIENT_HOLD_OFF)
             && (lwm2mH->bsState != BOOTSTRAP_PENDING)) {
         lwm2mH->bsState = BOOTSTRAP_REQUESTED;
     }
+
+    return 0;
 }
 
-static void prv_display_objects(int argc, char** argv)
+static int prv_display_objects(int argc, char** argv)
 {
+
+    (void)argc;
+    (void)argv;
+
     //lwm2m_context_t * lwm2mH = (lwm2m_context_t *)user_data;
     int i;
     if (NULL != lwm2mH->objectList) {
@@ -606,10 +628,16 @@ static void prv_display_objects(int argc, char** argv)
             }
         }
     }
+
+    return 0;
 }
 
-static void prv_display_backup(int argc, char** argv)
+static int prv_display_backup(int argc, char** argv)
 {
+
+    (void)argc;
+    (void)argv;
+
     if (NULL != backupObjectArray) {
         int i;
         for (i = 0 ; i < BACKUP_OBJECT_COUNT ; i++) {
@@ -629,6 +657,8 @@ static void prv_display_backup(int argc, char** argv)
             }
         }
     }
+
+    return 0;
 }
 
 static void prv_display_bootstrap_state(lwm2m_bootstrap_state_t bootstrapState)
@@ -814,7 +844,7 @@ static void *_eventloop(void *arg)
     (void)arg;
     msg_t msg, reply;
     msg_t msg_queue[1024];
-    int size, result;
+    int result;
     connection_t * connP;
     ng_pktsnip_t * snip;
     ng_pktsnip_t * tmp;
@@ -831,7 +861,7 @@ static void *_eventloop(void *arg)
         if (result != 0)
         {
             fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
-            return;
+            return NULL;
         }
 
         msg_receive(&msg);
@@ -852,7 +882,7 @@ static void *_eventloop(void *arg)
         if (result != 0)
         {
             fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
-            return;
+            return NULL;
         }
 #ifdef LWM2M_BOOTSTRAP
         update_bootstrap_info(&previousBootstrapState, lwm2mH);
@@ -911,16 +941,19 @@ int prv_init(int argc, char** argv)
 {
     // client_data_t data;
     int result;
-    int i;
-    const char * localPort = "56830";
     //const char * server = "localhost";
     const char * serverPort = DEFAULT_PORT;
     char * name = "testlwm2mclient";
     int lifetime = 300;
     // int batterylevelchanging = 0;
-    time_t reboot_time = 0;
-    int opt;
     bool bootstrapRequested = false;
+
+    (void)argc;
+    //(void)argv;
+
+    serverIp = argv[1];
+
+    printf("serverIp is now = %s\n",serverIp);
 
     memset(&data, 0, sizeof(client_data_t));
 
@@ -1001,12 +1034,13 @@ int prv_init(int argc, char** argv)
         fprintf(stderr, "Failed to create Access Control object instance\r\n");
         return -1;
     }
-    else if (acc_ctrl_oi_add_ac_val(objArray[8], instId, 0, 0b000000000001111)==false)
+    //TODO substitute with hex constants
+    else if (acc_ctrl_oi_add_ac_val(objArray[8], instId, 0, 0xF)==false)
     {
         fprintf(stderr, "Failed to create Access Control ACL default resource\r\n");
         return -1;
     }
-    else if (acc_ctrl_oi_add_ac_val(objArray[8], instId, 999, 0b000000000000001)==false)
+    else if (acc_ctrl_oi_add_ac_val(objArray[8], instId, 999, 0x1)==false)
     {
         fprintf(stderr, "Failed to create Access Control ACL resource for serverId: 999\r\n");
         return -1;
@@ -1074,8 +1108,11 @@ int prv_init(int argc, char** argv)
     return 0;
 }
 
-static void prv_quit(int argc, char** argv)
+static int prv_quit(int argc, char** argv)
 {
+
+    (void)argc;
+    (void)argv;
 
 #ifdef LWM2M_BOOTSTRAP
         close_backup_object();
@@ -1083,6 +1120,8 @@ static void prv_quit(int argc, char** argv)
         lwm2m_close(lwm2mH);
 
     connection_free(data.connList);
+
+    return 0;
 }
 
 
@@ -1122,9 +1161,12 @@ int main(int argc, char *argv[])
     //     printf("WTFFFFFFFFFF\n");
     //     return -1;
     // }
-    printf("servip ip = \n");
-    scanf("%s",&serverIp);
-    printf("serverIp is now = %s\n",serverIp);
+    // printf("servip ip = \n");
+    // scanf("%s",&serverIp);
+    // printf("serverIp is now = %s\n",serverIp);
+
+    (void)argc;
+    (void)argv;
 
     (void) posix_open(uart0_handler_pid, 0);
     /* ----------------- my variables ------------------- */

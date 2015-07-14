@@ -144,14 +144,15 @@ connection_t * connection_create(connection_t * connList,
     // {
    if(ng_ipv6_addr_from_str(&result,host) == NULL) {
         printf("ERROR getting address\n");
+        return NULL;
    }
    else
         connP = connection_new_incoming(connList, &result, sizeof(ng_ipv6_addr_t));
         //close(s);
     //}
-    // if (NULL != servinfo) {
-    //     free(servinfo);
-    // }
+    if (NULL != servinfo) {
+        free(servinfo);
+    }
 
     return connP;
 }
