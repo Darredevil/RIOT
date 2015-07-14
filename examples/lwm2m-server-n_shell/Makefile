@@ -24,7 +24,7 @@ INCLUDES += -I$(RIOTBASE)/sys/wakaama
 # which is not needed in a production environment but helps in the
 # development process:
 CFLAGS += -DDEVELHELP
-CFLAGS += -DLWM2M_SERVER_MODE -DWITH_LOGS -DLWM2M_LITTLE_ENDIAN -DLWM2M_BOOTSTRAP
+CFLAGS += -DLWM2M_SERVER_MODE -DWITH_LOGS -DLWM2M_LITTLE_ENDIAN -DLWM2M_BOOTSTRAP -g
 
 # Change this to 0 show compiler invocation lines by default:
 QUIET ?= 1

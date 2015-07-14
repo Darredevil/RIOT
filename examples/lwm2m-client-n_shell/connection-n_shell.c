@@ -121,7 +121,7 @@ connection_t * connection_create(connection_t * connList,
     ng_ipv6_addr_t result;
 
     if (0 >= sprintf(portStr, "%hu", port)) return NULL;
-    if (0 != getaddrinfo(host, portStr, &hints, &servinfo) || servinfo == NULL) return NULL;
+    //if (0 != getaddrinfo(host, portStr, &hints, &servinfo) || servinfo == NULL) return NULL;
 
     //TODO make another RIOT-style check
     // we test the various addresses

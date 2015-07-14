@@ -259,15 +259,33 @@ static void * prv_connect_server(uint16_t secObjInstID, void * userData)
     else {
         goto exit;
     }
-    portStr = strchr(host, ':');
-    if (portStr == NULL) goto exit;
-    // split strings
-    *portStr = 0;
+    // portStr = strchr(host, ':');
+    // if (portStr == NULL) goto exit;
+    // // split strings
+    // *portStr = 0;
+    // portStr++;
+    // port = strtol(portStr, &ptr, 10);
+
+
+    portStr = get_end_of_arg(host);
+    while(*portStr != ':') portStr--;
     portStr++;
+    //printf("portStr = %s\n", portStr);
     port = strtol(portStr, &ptr, 10);
-    if (*ptr != 0) {
-        goto exit;
-    }
+    //printf("port = <%d>\n", port);
+
+    //TODO repair this, hardcoded for testing
+    port = 4242;
+    //char host2[26] = "fe80::74cd:f1ff:fe01:8d6f";
+    //host2[25] = '\0';
+
+    //printf(" host = <%s>\n",host );
+
+    // if (*ptr != 0) {
+    //     goto exit;
+    // }
+
+
 
     fprintf(stderr, "Trying to connect to LWM2M Server at %s:%d\r\n", host, port);
     newConnP = connection_create(dataP->connList, host, port);
@@ -809,6 +827,13 @@ static void *_eventloop(void *arg)
     reply.type = NG_NETAPI_MSG_TYPE_ACK;
 
     while (1) {
+        //result = lwm2m_step(lwm2mH, &(tv.tv_sec));
+        if (result != 0)
+        {
+            fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
+            return;
+        }
+
         msg_receive(&msg);
         //read ng_pkt.buff
 

@@ -680,8 +680,11 @@ static void *_eventloop(void *arg)
     reply.type = NG_NETAPI_MSG_TYPE_ACK;
 
     while (1) {
+        printf("in while 1\n");
         msg_receive(&msg);
         //read ng_pkt.buff
+
+        printf("got a message\n");
 
 
         switch (msg.type) {
@@ -745,6 +748,7 @@ int prv_init(int argc, char** argv)
     }
 
     if (_pid == KERNEL_PID_UNDEF) {
+        printf("creating udp-listen thread\n");
     _pid = thread_create(_stack, sizeof(_stack), NG_PKTDUMP_PRIO,
                          CREATE_STACKTEST, _eventloop, NULL, "udp-listen");
     }
