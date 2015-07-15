@@ -687,6 +687,8 @@ static void *_eventloop(void *arg)
     connection_t * connP;
     ng_pktsnip_t * snip;
     ng_pktsnip_t * tmp;
+    int result;
+    struct timeval tv;
 
     /* setup the message queue */
     msg_init_queue(msg_queue, 1024);
@@ -695,7 +697,18 @@ static void *_eventloop(void *arg)
     reply.type = NG_NETAPI_MSG_TYPE_ACK;
 
     while (1) {
-        printf("in while 1\n");
+
+
+        tv.tv_sec = 60;
+        tv.tv_usec = 0;
+
+        result = lwm2m_step(lwm2mH, &(tv.tv_sec));
+        if (result != 0)
+        {
+            fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
+            return NULL;
+        }
+
         msg_receive(&msg);
         //read ng_pkt.buff
 

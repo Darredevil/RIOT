@@ -107,9 +107,14 @@
 static kernel_pid_t _pid = KERNEL_PID_UNDEF;
 static char _stack[NG_PKTDUMP_STACKSIZE];
 
+// static kernel_pid_t _pid_step = KERNEL_PID_UNDEF;
+// static char _stack_step[NG_PKTDUMP_STACKSIZE];
+
 
 static ng_netreg_entry_t client = {NULL, NG_NETREG_DEMUX_CTX_ALL,
                                    KERNEL_PID_UNDEF};
+// static ng_netreg_entry_t client_step = {NULL, NG_NETREG_DEMUX_CTX_ALL,
+//                                    KERNEL_PID_UNDEF};
 lwm2m_context_t * lwm2mH = NULL;
 
 
@@ -233,9 +238,9 @@ static void * prv_connect_server(uint16_t secObjInstID, void * userData)
 {
     client_data_t * dataP;
     char * uri;
-    char * host;
+    char * host, *host_dup;
     char * portStr;
-    int port;
+    int port, portLength = 0;
     char * ptr;
     connection_t * newConnP = NULL;
 
@@ -245,6 +250,7 @@ static void * prv_connect_server(uint16_t secObjInstID, void * userData)
     //dataP = &data;
 
     uri = get_server_uri(dataP->securityObjP, secObjInstID);
+    //printf("uri = <%s>\n",uri);
 
     if (uri == NULL) return NULL;
 
@@ -265,20 +271,25 @@ static void * prv_connect_server(uint16_t secObjInstID, void * userData)
     // portStr++;
     // port = strtol(portStr, &ptr, 10);
 
-
+    host_dup = lwm2m_strdup(host);
+    //printf(" host1 = <%s>\n",host_dup);
     portStr = get_end_of_arg(host);
-    while(*portStr != ':') portStr--;
+    //printf(" host2 = <%s>\n",host_dup);
+    while(*portStr != ':') {portStr--; portLength++; }
     portStr++;
     //printf("portStr = %s\n", portStr);
     port = strtol(portStr, &ptr, 10);
     //printf("port = <%d>\n", port);
+    //while(*host_dup != ':') host_dup++;
+    //*host_dup = '\0';
+    host_dup[strlen(host_dup) - portLength] = '\0';
 
     //TODO repair this, hardcoded for testing
-    port = 4242;
-    //char host2[26] = "fe80::74cd:f1ff:fe01:8d6f";
+    //port = 4242;
+    //char host2[26] = "fe80::1033:f2ff:fe77:46b7";
     //host2[25] = '\0';
 
-    //printf(" host = <%s>\n",host );
+    //printf(" host = <%s>\n",host_dup );
 
     // if (*ptr != 0) {
     //     goto exit;
@@ -286,8 +297,8 @@ static void * prv_connect_server(uint16_t secObjInstID, void * userData)
 
 
 
-    fprintf(stderr, "Trying to connect to LWM2M Server at %s:%d\r\n", host, port);
-    newConnP = connection_create(dataP->connList, host, port);
+    fprintf(stderr, "Trying to connect to LWM2M Server at %s:%d\r\n", host_dup, port);
+    newConnP = connection_create(dataP->connList, host_dup, port);
     if (newConnP == NULL) {
         fprintf(stderr, "Connection creation failed.\r\n");
     }
@@ -839,6 +850,39 @@ void print_usage(void)
 }
 
 
+// static void *_eventloop_step(void *arg)
+// {
+//     (void)arg;
+//     // int result;
+//     // struct timeval tv;
+
+// //     while(1) {
+// //         if (batterylevelchanging)
+// //         {
+// //             update_battery_level(lwm2mH);
+// //             tv.tv_sec = 5;
+// //         }
+// //         else
+// //         {
+// //             tv.tv_sec = 60;
+// //         }
+// //         tv.tv_usec = 0;
+
+// //         result = lwm2m_step(lwm2mH, &(tv.tv_sec));
+// //         sleep(30);
+// //         if (result != 0)
+// //         {
+// //             fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
+// //             return NULL;
+// //         }
+// // // #ifdef LWM2M_BOOTSTRAP
+// // //         update_bootstrap_info(&previousBootstrapState, lwm2mH);
+// // // #endif
+// //     }
+
+//     return NULL;
+// }
+
 static void *_eventloop(void *arg)
 {
     (void)arg;
@@ -857,7 +901,7 @@ static void *_eventloop(void *arg)
     reply.type = NG_NETAPI_MSG_TYPE_ACK;
 
     while (1) {
-        //result = lwm2m_step(lwm2mH, &(tv.tv_sec));
+        result = lwm2m_step(lwm2mH, &(tv.tv_sec));
         if (result != 0)
         {
             fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
@@ -878,12 +922,12 @@ static void *_eventloop(void *arg)
         }
         tv.tv_usec = 0;
 
-        result = lwm2m_step(lwm2mH, &(tv.tv_sec));
-        if (result != 0)
-        {
-            fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
-            return NULL;
-        }
+        // result = lwm2m_step(lwm2mH, &(tv.tv_sec));
+        // if (result != 0)
+        // {
+        //     fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
+        //     return NULL;
+        // }
 #ifdef LWM2M_BOOTSTRAP
         update_bootstrap_info(&previousBootstrapState, lwm2mH);
 #endif
@@ -1099,9 +1143,18 @@ int prv_init(int argc, char** argv)
                          CREATE_STACKTEST, _eventloop, NULL, "udp-listen");
     }
 
+    // if (_pid_step == KERNEL_PID_UNDEF) {
+    // _pid_step = thread_create(_stack_step, sizeof(_stack_step), NG_PKTDUMP_PRIO,
+    //                      CREATE_STACKTEST, _eventloop_step, NULL, "l2mwm_step");
+    // }
+
     client.pid = _pid;
     client.demux_ctx = DEFAULT_PORT_INT;
     ng_netreg_register(NG_NETTYPE_UDP, &client);
+
+    // client_step.pid = _pid_step;
+    // client_step.demux_ctx = DEFAULT_PORT_INT;
+    // ng_netreg_register(NG_NETTYPE_UDP, &client_step);
 
     //lwm2m_set_monitoring_callback(lwm2mH, prv_monitor_callback, lwm2mH);
 
