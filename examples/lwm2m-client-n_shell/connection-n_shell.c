@@ -86,7 +86,8 @@ connection_t * connection_find(connection_t * connList,
 
 connection_t * connection_new_incoming(connection_t * connList,
                                        ng_ipv6_addr_t * addr,
-                                       size_t addrLen)
+                                       size_t addrLen,
+                                       uint16_t port)
 {
     connection_t * connP;
 
@@ -96,6 +97,7 @@ connection_t * connection_new_incoming(connection_t * connList,
         memcpy(&(connP->addr), addr, addrLen);
         connP->addrLen = addrLen;
         connP->next = connList;
+        connP->port = port;
     }
 
     return connP;
@@ -147,12 +149,15 @@ connection_t * connection_create(connection_t * connList,
         return NULL;
    }
    else
-        connP = connection_new_incoming(connList, &result, sizeof(ng_ipv6_addr_t));
+        connP = connection_new_incoming(connList, &result, sizeof(ng_ipv6_addr_t),port);
         //close(s);
     //}
     if (NULL != servinfo) {
         free(servinfo);
     }
+
+    //TODO add port to connection_new_incoming
+
 
     return connP;
 }

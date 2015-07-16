@@ -42,7 +42,7 @@ typedef struct _connection_t
 int create_socket(const char * portStr);
 
 connection_t * connection_find(connection_t * connList, ng_ipv6_addr_t * addr, size_t addrLen);
-connection_t * connection_new_incoming(connection_t * connList, ng_ipv6_addr_t * addr, size_t addrLen);
+connection_t * connection_new_incoming(connection_t * connList, ng_ipv6_addr_t * addr, size_t addrLen, uint16_t port);
 connection_t * connection_create(connection_t * connList, char * host, uint16_t port);
 
 void connection_free(connection_t * connList);

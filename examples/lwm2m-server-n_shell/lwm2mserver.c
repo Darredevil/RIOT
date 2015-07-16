@@ -732,7 +732,7 @@ static void *_eventloop(void *arg)
                 //TODO redo connection.c for the new connection_t
                 if (connP == NULL)
                 {
-                    connP = connection_new_incoming(connList, src, sizeof(ng_ipv6_addr_t));
+                    connP = connection_new_incoming(connList, src, sizeof(ng_ipv6_addr_t), DEFAULT_PORT);
                     connP->port = DEFAULT_PORT;
                     if (connP != NULL)
                     {
