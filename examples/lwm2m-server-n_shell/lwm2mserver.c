@@ -717,17 +717,22 @@ static void *_eventloop(void *arg)
 
         switch (msg.type) {
             case NG_NETAPI_MSG_TYPE_RCV:
+                printf("case rcv\n" );
                 snip = (ng_pktsnip_t *)msg.content.ptr;
                 //TODO loop to get addr
                 tmp = snip->next;
+                printf("before while\n");
                 while (tmp && (tmp->type!= NG_NETTYPE_IPV6));
+                printf("after while\n");
                 if(tmp == NULL) {
                     puts("ERROR: no ipv6 address found");
                     exit(0);
                 }
                 ng_ipv6_hdr_t *ip = (ng_ipv6_hdr_t *)tmp->data;
                 ng_ipv6_addr_t *src = &(ip->src);
+                printf("before connection_find\n");
                 connP = connection_find(connList, src, sizeof(ng_ipv6_addr_t));
+                printf("after connection_find\n");
                 //TODO make new connection_t type with only what i need
                 //TODO redo connection.c for the new connection_t
                 if (connP == NULL)
@@ -749,14 +754,18 @@ static void *_eventloop(void *arg)
                 ng_pktbuf_release(snip);
                 break;
             case NG_NETAPI_MSG_TYPE_SND:
+                printf("case send\n" );
                 puts("PKTDUMP: data to send:");
                 //_dump((ng_pktsnip_t *)msg.content.ptr);
                 break;
             case NG_NETAPI_MSG_TYPE_GET:
+                printf("case get\n" );
             case NG_NETAPI_MSG_TYPE_SET:
+                printf("case set\n" );
                 msg_reply(&msg, &reply);
                 break;
             default:
+                printf("case default\n" );
                 puts("PKTDUMP: received something unexpected");
                 break;
         }

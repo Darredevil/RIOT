@@ -71,6 +71,7 @@ connection_t * connection_find(connection_t * connList,
     connection_t * connP;
 
     connP = connList;
+    printf("before connection_find server while\n");
     while (connP != NULL)
     {
         if ((connP->addrLen == addrLen)
@@ -80,6 +81,7 @@ connection_t * connection_find(connection_t * connList,
         }
         connP = connP->next;
     }
+    printf("after connection_find server while\n");
 
     return connP;
 }
