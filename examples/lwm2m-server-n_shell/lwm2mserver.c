@@ -719,10 +719,25 @@ static void *_eventloop(void *arg)
             case NG_NETAPI_MSG_TYPE_RCV:
                 printf("case rcv\n" );
                 snip = (ng_pktsnip_t *)msg.content.ptr;
+                printf("snip->type = %d\n", snip->type);
                 //TODO loop to get addr
                 tmp = snip->next;
+                printf("NG_NETTYPE_IPV6 = %d\n",NG_NETTYPE_IPV6);
+                printf("NG_NETTYPE_UDP = %d\n",NG_NETTYPE_UDP );
                 printf("before while\n");
-                while (tmp && (tmp->type!= NG_NETTYPE_IPV6));
+                //TODO remove after debug
+                int count = 0;
+                while (tmp && (tmp->type!= NG_NETTYPE_IPV6))
+                {
+                    if(count < 50) {
+                        printf("tmp->type = %d\n", tmp->type);
+                        printf("count = %d\n",count );
+                        count++;
+
+                    }
+
+
+                }
                 printf("after while\n");
                 if(tmp == NULL) {
                     puts("ERROR: no ipv6 address found");

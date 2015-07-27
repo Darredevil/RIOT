@@ -907,8 +907,9 @@ static void *_eventloop(void *arg)
             fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
             return NULL;
         }
-
+        printf("before message receive\n");
         msg_receive(&msg);
+        printf("after message reached\n");
         //read ng_pkt.buff
 
         if (batterylevelchanging)
