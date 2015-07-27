@@ -17,8 +17,9 @@ USEMODULE += ng_nativenet
 USEMODULE += ng_netif_default
 USEMODULE += auto_init_ng_netif
 USEMODULE += ng_icmpv6_echo
-
+USEMODULE += od
 USEMODULE += wakaama
+
 INCLUDES += -I$(RIOTBASE)/sys/wakaama
 
 # Comment this out to disable code in RIOT that does safety checking

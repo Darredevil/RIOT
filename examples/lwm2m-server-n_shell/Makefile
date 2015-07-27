@@ -8,6 +8,7 @@ BOARD ?= native
 RIOTBASE ?= $(CURDIR)/../..
 
 USEMODULE += wakaama
+USEMODULE += od
 USEMODULE += uart0
 USEMODULE += shell
 USEMODULE += shell_commands

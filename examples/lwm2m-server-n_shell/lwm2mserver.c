@@ -302,87 +302,95 @@ static void prv_notify_callback(uint16_t clientID,
 
 static int prv_read_client(int argc, char** argv)
 {
-    //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
-    char* end = NULL;
     int result;
     char *buffer;
 
-    if(argc != 3) goto syntax_error;
+    if(argc != 3)
+    {
+        puts("usage: read <CLIENT#> <URI>\n"
+            "   CLIENT#: client number as returned by command 'list'\n"
+            "   URI: uri to read such as /3, /3//2, /3/0/2, /1024/11, /1024//1\n"
+            "Result will be displayed asynchronously.\n");
+        return -1;
+    }
 
-    //result = prv_read_id(buffer, &clientId);
     result = prv_read_id(argv[1], &clientId);
-    if (result != 1) goto syntax_error;
+    if (result != 1)
+    {
+        puts("Error: incorrect CLIENT# ID\n");
+        return -1;
+    }
 
-    //buffer = get_next_arg(argv[2], &end);
     buffer = argv[2];
-    if (buffer[0] == 0) goto syntax_error;
 
     result = lwm2m_stringToUri(buffer, get_end_of_arg(buffer) - buffer, &uri);
-    if (result == 0) goto syntax_error;
-
-    if (!check_end_of_args(end)) goto syntax_error;
+    if (result == 0)
+    {
+        puts("Error: incorrect URI \n");
+        return -1;
+    }
 
     result = lwm2m_dm_read(lwm2mH, clientId, &uri, prv_result_callback, NULL);
 
     if (result == 0)
     {
-        fprintf(stdout, "OK");
+        puts("OK");
     }
     else
     {
         prv_print_error(result);
     }
     return 0;
-
-syntax_error:
-    fprintf(stdout, "Syntax error !");
-    return -1;
 }
 
 static int prv_write_client(int argc, char** argv)
 {
-    //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
-    char * end = NULL;
     int result;
     char *buffer;
 
-    if(argc != 4) goto syntax_error;
+    if(argc != 4)
+    {
+        puts("usage: write <CLIENT#> <URI> <DATA>\r\n"
+                "   CLIENT#: client number as returned by command 'list'\r\n"
+                "   URI: uri to write to such as /3, /3//2, /3/0/2, /1024/11, /1024//1\r\n"
+                "   DATA: data to write\r\n"
+                "Result will be displayed asynchronously.\n");
+        return -1;
+    }
 
     result = prv_read_id(argv[1], &clientId);
-    if (result != 1) goto syntax_error;
+    if (result != 1)
+    {
+        puts("Error: incorrect CLIENT# ID\n");
+        return -1;
+    }
 
-    //buffer = get_next_arg(buffer, &end);
     buffer = argv[2];
-    if (buffer[0] == 0) goto syntax_error;
 
     result = lwm2m_stringToUri(buffer, get_end_of_arg(buffer) - buffer, &uri);
-    if (result == 0) goto syntax_error;
+    if (result == 0)
+    {
+        puts("Error: incorrect URI \n");
+        return -1;
+    }
 
-    //buffer = get_next_arg(end, &end);
     buffer = argv[3];
-    if (buffer[0] == 0) goto syntax_error;
-
-    if (!check_end_of_args(end)) goto syntax_error;
 
     result = lwm2m_dm_write(lwm2mH, clientId, &uri, (uint8_t *)buffer, get_end_of_arg(buffer) - buffer, prv_result_callback, NULL);
 
     if (result == 0)
     {
-        fprintf(stdout, "OK");
+        puts("OK");
     }
     else
     {
         prv_print_error(result);
     }
     return 0;
-
-syntax_error:
-    fprintf(stdout, "Syntax error !");
-    return -1;
 }
 
 
@@ -710,46 +718,25 @@ static void *_eventloop(void *arg)
         }
 
         msg_receive(&msg);
-        //read ng_pkt.buff
-
-        printf("got a message\n");
-
 
         switch (msg.type) {
             case NG_NETAPI_MSG_TYPE_RCV:
-                printf("case rcv\n" );
                 snip = (ng_pktsnip_t *)msg.content.ptr;
-                printf("snip->type = %d\n", snip->type);
-                //TODO loop to get addr
+                //printf("snip->type = %d\n", snip->type);
                 tmp = snip->next;
-                printf("NG_NETTYPE_IPV6 = %d\n",NG_NETTYPE_IPV6);
-                printf("NG_NETTYPE_UDP = %d\n",NG_NETTYPE_UDP );
-                printf("before while\n");
-                //TODO remove after debug
-                int count = 0;
+                //printf("NG_NETTYPE_IPV6 = %d\n",NG_NETTYPE_IPV6);
+                //printf("NG_NETTYPE_UDP = %d\n",NG_NETTYPE_UDP );
                 while (tmp && (tmp->type!= NG_NETTYPE_IPV6))
-                {
-                    if(count < 50) {
-                        printf("tmp->type = %d\n", tmp->type);
-                        printf("count = %d\n",count );
-                        count++;
-
-                    }
-
-
-                }
-                printf("after while\n");
+                    tmp = tmp->next;
                 if(tmp == NULL) {
                     puts("ERROR: no ipv6 address found");
                     exit(0);
                 }
                 ng_ipv6_hdr_t *ip = (ng_ipv6_hdr_t *)tmp->data;
                 ng_ipv6_addr_t *src = &(ip->src);
-                printf("before connection_find\n");
                 connP = connection_find(connList, src, sizeof(ng_ipv6_addr_t));
-                printf("after connection_find\n");
-                //TODO make new connection_t type with only what i need
-                //TODO redo connection.c for the new connection_t
+                //TODO DONE make new connection_t type with only what i need
+                //TODO DONE redo connection.c for the new connection_t
                 if (connP == NULL)
                 {
                     connP = connection_new_incoming(connList, src, sizeof(ng_ipv6_addr_t), DEFAULT_PORT);
@@ -822,15 +809,8 @@ static const shell_command_t commands[] =
 {
         {"init", "Initialize the protocol.", prv_init},
         {"list", "List registered clients.", prv_output_clients},
-        {"read", "Read from a client.\n\n Long description:\n read CLIENT# URI\r\n"
-                                        "   CLIENT#: client number as returned by command 'list'\r\n"
-                                        "   URI: uri to read such as /3, /3//2, /3/0/2, /1024/11, /1024//1\r\n"
-                                        "Result will be displayed asynchronously.", prv_read_client},
-        {"write", "Write to a client.\n\n Long description:\n write CLIENT# URI DATA\r\n"
-                                        "   CLIENT#: client number as returned by command 'list'\r\n"
-                                        "   URI: uri to write to such as /3, /3//2, /3/0/2, /1024/11, /1024//1\r\n"
-                                        "   DATA: data to write\r\n"
-                                        "Result will be displayed asynchronously.", prv_write_client},
+        {"read", "Read from a client.", prv_read_client},
+        {"write", "Write to a client.", prv_write_client},
         {"exec", "Execute a client resource.\n\n Long description:\n exec CLIENT# URI\r\n"
                                         "   CLIENT#: client number as returned by command 'list'\r\n"
                                         "   URI: uri of the resource to execute such as /3/0/2\r\n"

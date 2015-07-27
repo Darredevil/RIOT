@@ -907,10 +907,8 @@ static void *_eventloop(void *arg)
             fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
             return NULL;
         }
-        printf("before message receive\n");
+
         msg_receive(&msg);
-        printf("after message reached\n");
-        //read ng_pkt.buff
 
         if (batterylevelchanging)
         {
@@ -923,12 +921,6 @@ static void *_eventloop(void *arg)
         }
         tv.tv_usec = 0;
 
-        // result = lwm2m_step(lwm2mH, &(tv.tv_sec));
-        // if (result != 0)
-        // {
-        //     fprintf(stderr, "lwm2m_step() failed: 0x%X\r\n", result);
-        //     return NULL;
-        // }
 #ifdef LWM2M_BOOTSTRAP
         update_bootstrap_info(&previousBootstrapState, lwm2mH);
 #endif
@@ -937,9 +929,9 @@ static void *_eventloop(void *arg)
         switch (msg.type) {
             case NG_NETAPI_MSG_TYPE_RCV:
                 snip = (ng_pktsnip_t *)msg.content.ptr;
-                //TODO loop to get addr
                 tmp = snip->next;
-                while (tmp && (tmp->type!= NG_NETTYPE_IPV6));
+                while (tmp && (tmp->type!= NG_NETTYPE_IPV6))
+                    tmp = tmp->next;
                 if(tmp == NULL) {
                     puts("ERROR: no ipv6 address found");
                     exit(0);
