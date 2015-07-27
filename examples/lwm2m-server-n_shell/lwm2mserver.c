@@ -393,60 +393,68 @@ static int prv_write_client(int argc, char** argv)
     return 0;
 }
 
-
+//TODO finish adapting
 static int prv_exec_client(int argc, char** argv)
 {
-    //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
     char *buffer;
     int result;
 
-    if(argc != 3) goto syntax_error;
+    if(argc != 3)
+    {
+        puts("usage: exec <CLIENT#> <URI>\r\n"
+            "   CLIENT#: client number as returned by command 'list'\r\n"
+            "   URI: uri of the resource to execute such as /3/0/2\r\n"
+            "Result will be displayed asynchronously.");
+        return -1;
+    }
 
     result = prv_read_id(argv[1], &clientId);
-    if (result != 1) goto syntax_error;
+    if (result != 1)
+    {
+        puts("Error: incorrect CLIENT# ID\n");
+        return -1;
+    }
 
-    //buffer = get_next_arg(buffer, &end);
     buffer = argv[2];
-    if (buffer[0] == 0) goto syntax_error;
 
     result = lwm2m_stringToUri(buffer, get_end_of_arg(buffer) - buffer, &uri);
-    if (result == 0) goto syntax_error;
+    if (result == 0)
+    {
+        puts("Error: incorrect URI \n");
+        return -1;
+    }
 
-    //buffer = get_next_arg(end, &end);
+    //TODO makes no sense atm
     buffer = argv[3];
 
-
-    if (buffer[0] == 0)
+    if (argc == 3)
     {
+        printf("checkpoint 3.1\n");
         result = lwm2m_dm_execute(lwm2mH, clientId, &uri, NULL, 0, prv_result_callback, NULL);
     }
-    else
+    else //TODO understand logic of this call and adapt
     {
-        if (!check_end_of_args(get_end_of_arg(buffer))) goto syntax_error;
+        printf("checkpoint 3.2\n");
+        //if (!check_end_of_args(get_end_of_arg(buffer))) goto syntax_error;
 
         result = lwm2m_dm_execute(lwm2mH, clientId, &uri, (uint8_t *)buffer, get_end_of_arg(buffer) - buffer, prv_result_callback, NULL);
     }
 
     if (result == 0)
     {
-        fprintf(stdout, "OK");
+        puts("OK");
     }
     else
     {
         prv_print_error(result);
     }
     return 0;
-
-syntax_error:
-    fprintf(stdout, "Syntax error !");
-    return -1;
 }
 
 static int prv_create_client(int argc, char** argv)
 {
-    //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
     char *buffer;
@@ -455,26 +463,36 @@ static int prv_create_client(int argc, char** argv)
     uint8_t temp_buffer[MAX_PACKET_SIZE];
     int temp_length = 0;
 
-    if(argc != 4) goto syntax_error;
+    if(argc != 4)
+    {
+        puts("usage: create <CLIENT#> <URI> <DATA>\r\n"
+            "   CLIENT#: client number as returned by command 'list'\r\n"
+            "   URI: uri to which create the Object Instance such as /1024, /1024/45 \r\n"
+            "   DATA: data to initialize the new Object Instance (0-255 for object 1024) \r\n"
+            "Result will be displayed asynchronously.");
+        return -1;
+    }
 
     //Get Client ID
     result = prv_read_id(argv[1], &clientId);
-    if (result != 1) goto syntax_error;
+    if (result != 1)
+    {
+        puts("Error: incorrect CLIENT# ID\n");
+        return -1;
+    }
 
     //Get Uri
-    //buffer = get_next_arg(buffer, &end);
     buffer = argv[2];
-    if (buffer[0] == 0) goto syntax_error;
 
     result = lwm2m_stringToUri(buffer, get_end_of_arg(buffer) - buffer, &uri);
-    if (result == 0) goto syntax_error;
+    if (result == 0)
+    {
+        puts("Error: incorrect URI\n");
+        return -1;
+    }
 
     //Get Data to Post
-    //buffer = get_next_arg(end, &end);
     buffer = argv[3];
-    if (buffer[0] == 0) goto syntax_error;
-
-    if (!check_end_of_args(get_end_of_arg(buffer))) goto syntax_error;
 
    // TLV
 
@@ -492,134 +510,148 @@ static int prv_create_client(int argc, char** argv)
 
     if (result == 0)
     {
-        fprintf(stdout, "OK");
+        puts("OK");
     }
     else
     {
         prv_print_error(result);
     }
     return 0;
-
-syntax_error:
-    fprintf(stdout, "Syntax error !");
-    return -1;
 }
 
 static int prv_delete_client(int argc, char** argv)
 {
-    //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
     char *buffer;
     int result;
 
-    if(argc != 3) goto syntax_error;
+    if(argc != 3)
+    {
+        puts("usage: del <CLIENT#> <URI>\r\n"
+            "   CLIENT#: client number as returned by command 'list'\r\n"
+            "   URI: uri of the instance to delete such as /1024/11\r\n"
+            "Result will be displayed asynchronously.");
+        return -1;
+    }
 
     result = prv_read_id(argv[1], &clientId);
-    if (result != 1) goto syntax_error;
+    if (result != 1)
+    {
+        puts("Error: incorrect CLIENT# ID\n");
+        return -1;
+    }
 
-    //buffer = get_next_arg(buffer, &end);
     buffer = argv[2];
-    if (buffer[0] == 0) goto syntax_error;
 
     result = lwm2m_stringToUri(buffer, get_end_of_arg(buffer) - buffer, &uri);
-    if (result == 0) goto syntax_error;
-
-    if (!check_end_of_args(get_end_of_arg(buffer))) goto syntax_error;
+    if (result == 0)
+    {
+        puts("Error: incorrect URI\n");
+        return -1;
+    }
 
     result = lwm2m_dm_delete(lwm2mH, clientId, &uri, prv_result_callback, NULL);
 
     if (result == 0)
     {
-        fprintf(stdout, "OK");
+        puts("OK");
     }
     else
     {
         prv_print_error(result);
     }
     return 0;
-
-syntax_error:
-    fprintf(stdout, "Syntax error !");
-    return -1;
 }
 
 static int prv_observe_client(int argc, char** argv)
 {
-    //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
     char* buffer;
     int result;
 
-    if(argc != 3) goto syntax_error;
+    if(argc != 3)
+    {
+        puts("usage: observe <CLIENT#> <URI>\r\n"
+            "   CLIENT#: client number as returned by command 'list'\r\n"
+            "   URI: uri to observe such as /3, /3/0/2, /1024/11\r\n"
+            "Result will be displayed asynchronously.");
+        return -1;
+    }
 
     result = prv_read_id(argv[1], &clientId);
-    if (result != 1) goto syntax_error;
+    if (result != 1)
+    {
+        puts("Error: incorrect CLIENT# ID\n");
+        return -1;
+    }
 
-    //buffer = get_next_arg(buffer, &end);
     buffer = argv[2];
-    if (buffer[0] == 0) goto syntax_error;
 
     result = lwm2m_stringToUri(buffer, get_end_of_arg(buffer) - buffer, &uri);
-    if (result == 0) goto syntax_error;
-
-    if (!check_end_of_args(get_end_of_arg(buffer))) goto syntax_error;
+    if (result == 0)
+    {
+        puts("Error: incorrect URI\n");
+        return -1;
+    }
 
     result = lwm2m_observe(lwm2mH, clientId, &uri, prv_notify_callback, NULL);
 
     if (result == 0)
     {
-        fprintf(stdout, "OK");
+        puts("OK");
     }
     else
     {
         prv_print_error(result);
     }
     return 0;
-
-syntax_error:
-    fprintf(stdout, "Syntax error !");
-    return -1;
 }
 
 static int prv_cancel_client(int argc, char** argv)
 {
-    //lwm2m_context_t * lwm2mH = (lwm2m_context_t *) user_data;
     uint16_t clientId;
     lwm2m_uri_t uri;
     char *buffer;
     int result;
 
-    (void)argc;
+    if(argc != 3)
+    {
+        puts("usage: cancel <CLIENT#> <URI>\r\n"
+            "   CLIENT#: client number as returned by command 'list'\r\n"
+            "   URI: uri on which to cancel an observe such as /3, /3/0/2, /1024/11\r\n"
+            "Result will be displayed asynchronously.");
+        return -1;
+    }
 
     result = prv_read_id(argv[1], &clientId);
-    if (result != 1) goto syntax_error;
+    if (result != 1)
+    {
+        puts("Error: incorrect CLIENT# ID\n");
+        return -1;
+    }
 
-    //buffer = get_next_arg(buffer, &end);
     buffer = argv[2];
-    if (buffer[0] == 0) goto syntax_error;
 
     result = lwm2m_stringToUri(buffer, get_end_of_arg(buffer) - buffer, &uri);
-    if (result == 0) goto syntax_error;
-
-    if (!check_end_of_args(get_end_of_arg(buffer))) goto syntax_error;
+    if (result == 0)
+    {
+        puts("Error: incorrect URI\n");
+        return -1;
+    }
 
     result = lwm2m_observe_cancel(lwm2mH, clientId, &uri, prv_result_callback, NULL);
 
     if (result == 0)
     {
-        fprintf(stdout, "OK");
+        puts("OK");
     }
     else
     {
         prv_print_error(result);
     }
     return 0;
-
-syntax_error:
-    fprintf(stdout, "Syntax error !");
-    return -1;
 }
 
 static void prv_monitor_callback(uint16_t clientID,
@@ -811,28 +843,11 @@ static const shell_command_t commands[] =
         {"list", "List registered clients.", prv_output_clients},
         {"read", "Read from a client.", prv_read_client},
         {"write", "Write to a client.", prv_write_client},
-        {"exec", "Execute a client resource.\n\n Long description:\n exec CLIENT# URI\r\n"
-                                        "   CLIENT#: client number as returned by command 'list'\r\n"
-                                        "   URI: uri of the resource to execute such as /3/0/2\r\n"
-                                        "Result will be displayed asynchronously.", prv_exec_client},
-        {"del", "Delete a client Object instance.\n\n Long description:\n del CLIENT# URI\r\n"
-                                        "   CLIENT#: client number as returned by command 'list'\r\n"
-                                        "   URI: uri of the instance to delete such as /1024/11\r\n"
-                                        "Result will be displayed asynchronously.", prv_delete_client},
-        {"create", "create an Object instance.\n\n Long description:\n create CLIENT# URI DATA\r\n"
-                                        "   CLIENT#: client number as returned by command 'list'\r\n"
-                                        "   URI: uri to which create the Object Instance such as /1024, /1024/45 \r\n"
-                                        "   DATA: data to initialize the new Object Instance (0-255 for object 1024) \r\n"
-                                        "Result will be displayed asynchronously.", prv_create_client},
-        {"observe", "Observe from a client.\n\n Long description:\n observe CLIENT# URI\r\n"
-                                        "   CLIENT#: client number as returned by command 'list'\r\n"
-                                        "   URI: uri to observe such as /3, /3/0/2, /1024/11\r\n"
-                                        "Result will be displayed asynchronously.", prv_observe_client},
-        {"cancel", "Cancel an observe.\n\n Long description:\n cancel CLIENT# URI\r\n"
-                                        "   CLIENT#: client number as returned by command 'list'\r\n"
-                                        "   URI: uri on which to cancel an observe such as /3, /3/0/2, /1024/11\r\n"
-                                        "Result will be displayed asynchronously.", prv_cancel_client},
-
+        {"exec", "Execute a client resource.", prv_exec_client},
+        {"del", "Delete a client Object instance.", prv_delete_client},
+        {"create", "create an Object instance.", prv_create_client},
+        {"observe", "Observe from a client.", prv_observe_client},
+        {"cancel", "Cancel an observe.", prv_cancel_client},
         {"q", "Quit the server.", prv_quit},
 
         { NULL, NULL, NULL }
