@@ -133,6 +133,9 @@ endif
 ifneq (,$(filter ng_netdev_eth,$(USEMODULE)))
     DIRS += net/link_layer/ng_netdev_eth
 endif
+ifneq (,$(filter lwm2m_cli,$(USEMODULE)))
+    DIRS += net/application_layer/lwm2m_cli
+endif
 
 DIRS += $(dir $(wildcard $(addsuffix /Makefile, ${USEMODULE})))
 
