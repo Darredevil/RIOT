@@ -54,4 +54,8 @@ ifneq (,$(filter newlib,$(USEMODULE)))
     include $(RIOTBASE)/sys/newlib/Makefile.include
 endif
 
+ifneq (,$(filter wakaama,$(USEMODULE)))
+    include $(RIOTBASE)/sys/wakaama/Makefile.include
+endif
+
 INCLUDES += -I$(RIOTBASE)/sys/libc/include
