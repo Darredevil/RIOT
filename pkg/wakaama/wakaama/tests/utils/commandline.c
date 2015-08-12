@@ -13,7 +13,7 @@
  * Contributors:
  *    David Navarro, Intel Corporation - initial API and implementation
  *    Fabien Fleutot - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 #include <string.h>
@@ -179,7 +179,7 @@ void output_buffer(FILE * stream,
 {
     int i;
 
-    if (length == 0) fprintf(stream, "\n");
+    if (length == 0 || length > 16) fprintf(stream, "\n");
 
     i = 0;
     while (i < length)
@@ -268,7 +268,7 @@ void output_tlv(FILE * stream,
             double floatValue;
 
             print_indent(stream, indent+2);
-            fprintf(stream, "data (%ld bytes):\r\n", dataLen);
+            fprintf(stream, "data (%zu bytes):\r\n", dataLen);
             output_buffer(stream, (uint8_t*)buffer + length + dataIndex, dataLen, indent+2);
 
             if (0 < lwm2m_opaqueToInt(buffer + length + dataIndex, dataLen, &intValue))
@@ -342,7 +342,7 @@ void dump_tlv(FILE * stream,
         fprintf(stream, "\r\n");
 
         print_indent(stream, indent+1);
-        fprintf(stream, "data length: %d\r\n", (int) tlvP[i].length);
+        fprintf(stream, "data length: %d\r\n", tlvP[i].length);
 
         if (tlvP[i].type == LWM2M_TYPE_OBJECT_INSTANCE
          || tlvP[i].type == LWM2M_TYPE_MULTIPLE_RESOURCE)

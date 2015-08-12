@@ -16,7 +16,7 @@
  *    David Navarro, Intel Corporation - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
  *    Pascal Rieux - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -195,6 +195,8 @@ static uint8_t prv_firmware_execute(uint16_t instanceId,
                                     int length,
                                     lwm2m_object_t * objectP)
 {
+    (void)buffer;
+
     firmware_data_t * data = (firmware_data_t*)(objectP->userData);
 
     // this is a single instance object

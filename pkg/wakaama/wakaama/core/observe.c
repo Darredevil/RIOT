@@ -14,7 +14,7 @@
  *    David Navarro, Intel Corporation - initial API and implementation
  *    Toby Jaffey - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -308,7 +308,27 @@ static lwm2m_observation_t * prv_findObservationByURI(lwm2m_client_t * clientP,
 void observation_remove(lwm2m_client_t * clientP,
                         lwm2m_observation_t * observationP)
 {
-    clientP->observationList = (lwm2m_observation_t *) LWM2M_LIST_RM(clientP->observationList, observationP->id, NULL);
+    if (clientP->observationList == observationP)
+    {
+        clientP->observationList = clientP->observationList->next;
+    }
+    else if (clientP->observationList != NULL)
+    {
+        lwm2m_observation_t * parentP;
+
+        parentP = clientP->observationList;
+
+        while (parentP->next != NULL
+            && parentP->next != observationP)
+        {
+            parentP = parentP->next;
+        }
+        if (parentP->next != NULL)
+        {
+            parentP->next = parentP->next->next;
+        }
+    }
+
     lwm2m_free(observationP);
 }
 
@@ -318,21 +338,6 @@ static void prv_obsRequestCallback(lwm2m_transaction_t * transacP,
     lwm2m_observation_t * observationP = (lwm2m_observation_t *)transacP->userData;
     coap_packet_t * packet = (coap_packet_t *)message;
     uint8_t code;
-
-    switch (observationP->status)
-    {
-    case STATE_DEREG_PENDING:
-        // Observation was canceled by the user.
-        observation_remove(((lwm2m_client_t*)transacP->peerP), observationP);
-        return;
-
-    case STATE_REG_PENDING:
-        observationP->status = STATE_REGISTERED;
-        break;
-
-    default:
-        break;
-    }
 
     if (message == NULL)
     {
@@ -359,6 +364,7 @@ static void prv_obsRequestCallback(lwm2m_transaction_t * transacP,
     }
     else
     {
+        observationP->clientP->observationList = (lwm2m_observation_t *)LWM2M_LIST_ADD(observationP->clientP->observationList, observationP);
         observationP->callback(((lwm2m_client_t*)transacP->peerP)->internalID,
                                &observationP->uri,
                                0,
@@ -387,10 +393,16 @@ int lwm2m_observe(lwm2m_context_t * contextP,
     if (observationP == NULL) return COAP_500_INTERNAL_SERVER_ERROR;
     memset(observationP, 0, sizeof(lwm2m_observation_t));
 
+    transactionP = transaction_new(COAP_GET, clientP->altPath, uriP, contextP->nextMID++, ENDPOINT_CLIENT, (void *)clientP);
+    if (transactionP == NULL)
+    {
+        lwm2m_free(observationP);
+        return COAP_500_INTERNAL_SERVER_ERROR;
+    }
+
     observationP->id = lwm2m_list_newId((lwm2m_list_t *)clientP->observationList);
     memcpy(&observationP->uri, uriP, sizeof(lwm2m_uri_t));
     observationP->clientP = clientP;
-    observationP->status = STATE_REG_PENDING;
     observationP->callback = callback;
     observationP->userData = userData;
 
@@ -398,15 +410,6 @@ int lwm2m_observe(lwm2m_context_t * contextP,
     token[1] = clientP->internalID & 0xFF;
     token[2] = observationP->id >> 8;
     token[3] = observationP->id & 0xFF;
-
-    transactionP = transaction_new(COAP_TYPE_CON, COAP_GET, clientP->altPath, uriP, contextP->nextMID++, 4, token, ENDPOINT_CLIENT, (void *)clientP);
-    if (transactionP == NULL)
-    {
-        lwm2m_free(observationP);
-        return COAP_500_INTERNAL_SERVER_ERROR;
-    }
-
-    observationP->clientP->observationList = (lwm2m_observation_t *)LWM2M_LIST_ADD(observationP->clientP->observationList, observationP);
 
     coap_set_header_observe(transactionP->message, 0);
     coap_set_header_token(transactionP->message, token, sizeof(token));
@@ -425,6 +428,9 @@ int lwm2m_observe_cancel(lwm2m_context_t * contextP,
                          lwm2m_result_callback_t callback,
                          void * userData)
 {
+    (void)callback;
+    (void)userData;
+
     lwm2m_client_t * clientP;
     lwm2m_observation_t * observationP;
 
@@ -434,28 +440,14 @@ int lwm2m_observe_cancel(lwm2m_context_t * contextP,
     observationP = prv_findObservationByURI(clientP, uriP);
     if (observationP == NULL) return COAP_404_NOT_FOUND;
 
-    switch (observationP->status)
-    {
-    case STATE_REGISTERED:
-        observation_remove(clientP, observationP);
-        break;
-
-    case STATE_REG_PENDING:
-        observationP->status = STATE_DEREG_PENDING;
-        break;
-
-    default:
-        // Should not happen
-        break;
-    }
+    observation_remove(clientP, observationP);
 
     return 0;
 }
 
-bool handle_observe_notify(lwm2m_context_t * contextP,
+void handle_observe_notify(lwm2m_context_t * contextP,
                            void * fromSessionH,
-                           coap_packet_t * message,
-        				   coap_packet_t * response)
+                           coap_packet_t * message)
 {
     uint8_t * tokenP;
     int token_len;
@@ -466,34 +458,32 @@ bool handle_observe_notify(lwm2m_context_t * contextP,
     uint32_t count;
 
     token_len = coap_get_header_token(message, (const uint8_t **)&tokenP);
-    if (token_len != sizeof(uint32_t)) return false;
+    if (token_len != sizeof(uint32_t)) return;
 
-    if (1 != coap_get_header_observe(message, &count)) return false;
+    if (1 != coap_get_header_observe(message, &count)) return;
 
     clientID = (tokenP[0] << 8) | tokenP[1];
     obsID = (tokenP[2] << 8) | tokenP[3];
 
     clientP = (lwm2m_client_t *)lwm2m_list_find((lwm2m_list_t *)contextP->clientList, clientID);
-    if (clientP == NULL) return false;
+    if (clientP == NULL) return;
 
     observationP = (lwm2m_observation_t *)lwm2m_list_find((lwm2m_list_t *)clientP->observationList, obsID);
     if (observationP == NULL)
     {
-        coap_init_message(response, COAP_TYPE_RST, 0, message->mid);
-        message_send(contextP, response, fromSessionH);
+        coap_packet_t resetMsg;
+
+        coap_init_message(&resetMsg, COAP_TYPE_RST, 0, message->mid);
+
+        message_send(contextP, &resetMsg, fromSessionH);
     }
     else
     {
-        if (message->type == COAP_TYPE_CON ) {
-            coap_init_message(response, COAP_TYPE_ACK, 0, message->mid);
-            message_send(contextP, response, fromSessionH);
-        }
         observationP->callback(clientID,
                                &observationP->uri,
                                (int)count,
                                message->payload, message->payload_len,
                                observationP->userData);
     }
-    return true;
 }
 #endif

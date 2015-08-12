@@ -14,7 +14,7 @@
  *    David Navarro, Intel Corporation - initial API and implementation
  *    Fabien Fleutot - Please refer to git log
  *    Bosch Software Innovations GmbH - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 #include "internals.h"
@@ -614,7 +614,7 @@ int lwm2m_tlv_decode_int(lwm2m_tlv_t * tlvP,
     else
     {
         result = lwm2m_opaqueToInt(tlvP->value, tlvP->length, dataP);
-        if (result == tlvP->length)
+        if ((size_t)result == tlvP->length)
         {
             result = 1;
         }
@@ -710,7 +710,7 @@ int lwm2m_tlv_decode_float(lwm2m_tlv_t * tlvP,
     else
     {
         result = lwm2m_opaqueToFloat(tlvP->value, tlvP->length, dataP);
-        if (result == tlvP->length)
+        if ((size_t)result == tlvP->length)
         {
             result = 1;
         }

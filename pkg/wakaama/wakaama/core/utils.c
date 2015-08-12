@@ -13,7 +13,7 @@
  * Contributors:
  *    David Navarro, Intel Corporation - initial API and implementation
  *    Toby Jaffey - Please refer to git log
- *    
+ *
  *******************************************************************************/
 
 /*
@@ -357,6 +357,9 @@ lwm2m_server_t * prv_findServer(lwm2m_context_t * contextP,
 lwm2m_server_t * utils_findBootstrapServer(lwm2m_context_t * contextP,
                                            void * fromSessionH)
 {
+    (void)contextP;
+    (void)fromSessionH;
+
 #ifdef LWM2M_CLIENT_MODE
 
     lwm2m_server_t * targetP;
@@ -377,7 +380,7 @@ lwm2m_server_t * utils_findBootstrapServer(lwm2m_context_t * contextP,
 #endif
 }
 
-int prv_isAltPathValid(const char * altPath)
+int prv_isAltPathValid(char * altPath)
 {
     int i;
 
