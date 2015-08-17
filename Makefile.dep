@@ -1,5 +1,5 @@
 ifneq (,$(filter lwm2m_cli,$(USEMODULE)))
-  USEMODULE += wakaama
+  USEPKG += wakaama
   USEMODULE += ng_ipv6_default
   USEMODULE += ng_udp
 endif

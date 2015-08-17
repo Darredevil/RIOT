@@ -162,9 +162,12 @@ int lwm2m_cli_init(char *name, ipv6_addr_t *addr, uint16_t port)
         puts("error: lwm2m_init() failed");
         return 1;
     }
+
+#ifdef LWM2M_BOOTSTRAP
     /* for now, we do not do any bootstrapping by default */
     DEBUG("init: setting bootstrap state to NOT_BOOTSTRAPPED\n");
     lwm2m_cli_ctx->bsState = NOT_BOOTSTRAPPED;
+#endif
 
     /* now let's initialize the library, giving it a (unique) name of the client
      * and a pointer to the prepared object store */
