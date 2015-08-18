@@ -116,6 +116,10 @@ extern int _zep_init(int argc, char **argv);
 #endif
 #endif
 
+#ifdef MODULE_LWM2M_CLI
+extern int _lwm2m_cli(int argc, char **argv);
+#endif
+
 const shell_command_t _shell_command_list[] = {
     {"reboot", "Reboot the node", _reboot_handler},
 #ifdef MODULE_CONFIG
@@ -190,6 +194,9 @@ const shell_command_t _shell_command_list[] = {
 #ifdef MODULE_IPV6_ADDR
     {"zep_init", "initializes ZEP (Zigbee Encapsulation Protocol)", _zep_init },
 #endif
+#endif
+#ifdef MODULE_LWM2M_CLI
+    {"lm", "manage LWM2M client", _lwm2m_cli },
 #endif
     {NULL, NULL, NULL}
 };
