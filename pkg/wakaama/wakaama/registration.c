@@ -389,6 +389,7 @@ void registration_update(lwm2m_context_t * contextP,
 static void prv_handleDeregistrationReply(lwm2m_transaction_t * transacP,
                                         void * message)
 {
+    (void)message;
     lwm2m_server_t * targetP;
 
     targetP = (lwm2m_server_t *)(transacP->peerP);
@@ -529,7 +530,7 @@ static int prv_getId(uint8_t * data,
     {
         data++;
         length-=2;
-    } 
+    }
     else
     {
         return 0;
