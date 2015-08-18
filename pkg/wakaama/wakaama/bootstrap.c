@@ -97,6 +97,8 @@ void handle_bootstrap_response(lwm2m_context_t * context,
         coap_packet_t * message,
         void * fromSessionH)
 {
+    (void)fromSessionH;
+
     if (COAP_204_CHANGED == message->code)
     {
         context->bsState = BOOTSTRAP_PENDING;
@@ -221,6 +223,8 @@ void update_bootstrap_state(lwm2m_context_t * context,
 coap_status_t handle_bootstrap_finish(lwm2m_context_t * context,
                                       void * fromSessionH)
 {
+    (void)fromSessionH;
+
     if (context->bsState == BOOTSTRAP_PENDING)
     {
         context->bsState = BOOTSTRAP_FINISHED;
